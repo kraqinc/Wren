@@ -3,37 +3,94 @@ package com.wren.ide.features.editor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.wren.ide.core.network.*
+import com.wren.ide.core.network.FileItem
+import com.wren.ide.core.network.NetworkClient
+import com.wren.ide.core.network.Project
+import com.wren.ide.core.network.ProjectFilesResponse
+import com.wren.ide.core.network.ProjectListResponse
 import com.wren.ide.core.storage.SessionManager
-import com.wren.ide.core.theme.*
-import kotlinx.coroutines.CoroutineScope
+import com.wren.ide.core.theme.BorderGray
+import com.wren.ide.core.theme.EditorYellow
+import com.wren.ide.core.theme.ElectricCyan
+import com.wren.ide.core.theme.ErrorRed
+import com.wren.ide.core.theme.PrimaryObsidian
+import com.wren.ide.core.theme सेकondaryCard
+import com.wren.ide.core.theme.TerminalGreen
+import com.wren.ide.core.theme.TextLight
+import com.wren.ide.core.theme.TextMuted
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,20 +105,17 @@ fun IDEWorkspaceScreen(
     onLogout: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    
-    // IDE States
+
     var projects by remember { mutableStateOf<List<Project>>(emptyList()) }
     var selectedProject by remember { mutableStateOf<Project?>(null) }
     var files by remember { mutableStateOf<List<FileItem>>(emptyList()) }
     var selectedFile by remember { mutableStateOf<FileItem?>(null) }
     var codeContent by remember { mutableStateOf(TextFieldValue("")) }
-    
-    // UI Panels toggle
+
     var isFileTreeExpanded by remember { mutableStateOf(true) }
     var terminalOutput by remember { mutableStateOf("wren-terminal-session init: OK\n$ ") }
     var terminalInput by remember { mutableStateOf("") }
-    
-    // Dialog and loading states
+
     var isLoading by remember { mutableStateOf(false) }
     var showNewProjectDialog by remember { mutableStateOf(false) }
     var showNewFileDialog by remember { mutableStateOf(false) }
@@ -69,7 +123,6 @@ fun IDEWorkspaceScreen(
     var newFileName by remember { mutableStateOf("") }
     var isNewFileDirectory by remember { mutableStateOf(false) }
 
-    // Fetch initial project list
     LaunchedEffect(Unit) {
         isLoading = true
         scope.launch(Dispatchers.IO) {
@@ -88,13 +141,12 @@ fun IDEWorkspaceScreen(
                 } else {
                     withContext(Dispatchers.Main) { isLoading = false }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) { isLoading = false }
             }
         }
     }
 
-    // Fetch files when selected project changes
     LaunchedEffect(selectedProject) {
         selectedProject?.let { project ->
             isLoading = true
@@ -106,7 +158,7 @@ fun IDEWorkspaceScreen(
                         val fResponse = Gson().fromJson(body, ProjectFilesResponse::class.java)
                         withContext(Dispatchers.Main) {
                             files = fResponse.files
-                            selectedFile = files.find { it.is_directory == 0 } // Open first file
+                            selectedFile = files.find { it.is_directory == 0 }
                             selectedFile?.let {
                                 codeContent = TextFieldValue(it.content ?: "")
                             }
@@ -115,7 +167,7 @@ fun IDEWorkspaceScreen(
                     } else {
                         withContext(Dispatchers.Main) { isLoading = false }
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     withContext(Dispatchers.Main) { isLoading = false }
                 }
             }
@@ -127,28 +179,60 @@ fun IDEWorkspaceScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Code, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(24.dp))
+                        Icon(
+                            Icons.Filled.Code,
+                            contentDescription = null,
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(24.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("WREN", color = TextLight, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "WREN",
+                            color = TextLight,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         selectedProject?.let {
-                            Text("| ${it.name}", color = TextMuted, fontSize = 14.sp)
+                            Text(
+                                "| ${it.name}",
+                                color = TextMuted,
+                                fontSize = 14.sp
+                            )
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavToAI) {
-                        Icon(Icons.Filled.AutoAwesome, contentDescription = "AI Agent", tint = ElectricCyan)
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = "AI Agent",
+                            tint = ElectricCyan
+                        )
                     }
                     IconButton(onClick = onNavToCredits) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.MonetizationOn, contentDescription = "Credits", tint = EditorYellow)
-                            Text("${sessionManager.userCredits}", color = EditorYellow, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
+                            Icon(
+                                Icons.Filled.MonetizationOn,
+                                contentDescription = "Credits",
+                                tint = EditorYellow
+                            )
+                            Text(
+                                "${sessionManager.userCredits}",
+                                color = EditorYellow,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
                         }
                     }
                     if (sessionManager.userRole == "OWNER" || sessionManager.userRole == "SUPER_ADMIN") {
                         IconButton(onClick = onNavToOwner) {
-                            Icon(Icons.Filled.AdminPanelSettings, contentDescription = "Owner Dashboard", tint = TerminalGreen)
+                            Icon(
+                                Icons.Filled.AdminPanelSettings,
+                                contentDescription = "Owner Dashboard",
+                                tint = TerminalGreen
+                            )
                         }
                     }
                     IconButton(onClick = {
@@ -156,10 +240,14 @@ fun IDEWorkspaceScreen(
                         NetworkClient.setAuthToken(null)
                         onLogout()
                     }) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = ErrorRed)
+                        Icon(
+                            Icons.Filled.Logout,
+                            contentDescription = "Logout",
+                            tint = ErrorRed
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SecondaryCard)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = com.wren.ide.core.theme.SecondaryCard)
             )
         }
     ) { innerPadding ->
@@ -169,34 +257,46 @@ fun IDEWorkspaceScreen(
                 .padding(innerPadding)
                 .background(PrimaryObsidian)
         ) {
-            // Workspace Layout
             Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                // 1. Left Side: File Explorer Drawer (collapsible)
                 if (isFileTreeExpanded) {
                     Column(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(0.35f)
-                            .background(SecondaryCard)
+                            .background(com.wren.ide.core.theme.SecondaryCard)
                             .border(1.dp, BorderGray)
                     ) {
-                        // Projects Header / Selector
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("PROYECTOS", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "PROYECTOS",
+                                color = TextMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             IconButton(
                                 onClick = { showNewProjectDialog = true },
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = "Add Project", tint = ElectricCyan, modifier = Modifier.size(16.dp))
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = "Add Project",
+                                    tint = ElectricCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
 
-                        // Project Selector List
-                        LazyColumn(modifier = Modifier.height(100.dp).padding(horizontal = 8.dp)) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .height(100.dp)
+                                .padding(horizontal = 8.dp)
+                        ) {
                             items(projects) { project ->
                                 Text(
                                     text = project.name,
@@ -213,25 +313,39 @@ fun IDEWorkspaceScreen(
 
                         Divider(color = BorderGray, thickness = 1.dp)
 
-                        // File List Header
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("ARCHIVOS", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "ARCHIVOS",
+                                color = TextMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             selectedProject?.let {
                                 IconButton(
                                     onClick = { showNewFileDialog = true },
                                     modifier = Modifier.size(24.dp)
                                 ) {
-                                    Icon(Icons.Filled.CreateNewFolder, contentDescription = "Add File", tint = ElectricCyan, modifier = Modifier.size(16.dp))
+                                    Icon(
+                                        Icons.Filled.CreateNewFolder,
+                                        contentDescription = "Add File",
+                                        tint = ElectricCyan,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
                             }
                         }
 
-                        // Recursive File Tree Viewer
-                        LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp)
+                        ) {
                             items(files) { file ->
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -264,7 +378,6 @@ fun IDEWorkspaceScreen(
                     }
                 }
 
-                // Split toggle grip button
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -281,14 +394,12 @@ fun IDEWorkspaceScreen(
                     )
                 }
 
-                // 2. Right Side: Editor Workspace
                 Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     selectedFile?.let { activeFile ->
-                        // File Metadata Header
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(SecondaryCard)
+                                .background(com.wren.ide.core.theme.SecondaryCard)
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -299,7 +410,6 @@ fun IDEWorkspaceScreen(
                                 fontSize = 12.sp,
                                 fontFamily = FontFamily.Monospace
                             )
-                            // Save Button
                             IconButton(
                                 onClick = {
                                     selectedProject?.let { p ->
@@ -308,7 +418,6 @@ fun IDEWorkspaceScreen(
                                                 val body = mapOf("content" to codeContent.text)
                                                 val res = NetworkClient.put("/projects/${p.id}/files/${activeFile.id}", body)
                                                 if (res.isSuccessful) {
-                                                    // Sync local memory content
                                                     val updatedFiles = files.map {
                                                         if (it.id == activeFile.id) it.copy(content = codeContent.text) else it
                                                     }
@@ -316,24 +425,28 @@ fun IDEWorkspaceScreen(
                                                         files = updatedFiles
                                                     }
                                                 }
-                                            } catch (e: Exception) { /* Silent fail */ }
+                                            } catch (_: Exception) {
+                                            }
                                         }
                                     }
                                 },
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                Icon(Icons.Filled.Save, contentDescription = "Save file", tint = ElectricCyan, modifier = Modifier.size(16.dp))
+                                Icon(
+                                    Icons.Filled.Save,
+                                    contentDescription = "Save file",
+                                    tint = ElectricCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
 
-                        // Code Editor Body with Line Numbers and real-time Highlighter
                         Row(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
                                 .background(PrimaryObsidian)
                         ) {
-                            // Syntax Editor Canvas
                             BasicTextField(
                                 value = codeContent,
                                 onValueChange = { codeContent = it },
@@ -344,7 +457,7 @@ fun IDEWorkspaceScreen(
                                     lineHeight = 20.sp
                                 ),
                                 cursorBrush = SolidColor(ElectricCyan),
-                                visualTransformation = { text ->
+                                visualTransformation = VisualTransformation { text ->
                                     val annotated = highlightKotlinSyntax(text.text)
                                     TransformedText(annotated, OffsetMapping.Identity)
                                 },
@@ -354,15 +467,20 @@ fun IDEWorkspaceScreen(
                             )
                         }
                     } ?: Box(
-                        modifier = Modifier.fillMaxSize().background(PrimaryObsidian),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(PrimaryObsidian),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Crea o selecciona un archivo para empezar a programar.", color = TextMuted, fontSize = 13.sp)
+                        Text(
+                            "Crea o selecciona un archivo para empezar a programar.",
+                            color = TextMuted,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             }
 
-            // 3. Bottom Panel: Terminal Console Emulator
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -370,25 +488,33 @@ fun IDEWorkspaceScreen(
                     .background(PrimaryObsidian)
                     .border(1.dp, BorderGray)
             ) {
-                // Terminal Title Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SecondaryCard)
+                        .background(com.wren.ide.core.theme.SecondaryCard)
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("TERMINAL", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "TERMINAL",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                     IconButton(
                         onClick = { terminalOutput = "wren-terminal-session reset: SUCCESS\n$ " },
                         modifier = Modifier.size(20.dp)
                     ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Reset terminal", tint = TextMuted, modifier = Modifier.size(14.dp))
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = "Reset terminal",
+                            tint = TextMuted,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
 
-                // Terminal Logs area
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -406,11 +532,10 @@ fun IDEWorkspaceScreen(
                     }
                 }
 
-                // Terminal Shell input field
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SecondaryCard)
+                        .background(com.wren.ide.core.theme.SecondaryCard)
                         .padding(horizontal = 12.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -429,15 +554,14 @@ fun IDEWorkspaceScreen(
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = 4.dp, vertical = 4.dp)
-                            .clickable {}
+                            .clickable { }
                     )
                     IconButton(
                         onClick = {
                             if (terminalInput.isBlank()) return@IconButton
                             val command = terminalInput.trim()
                             terminalOutput += "$command\n"
-                            
-                            // Simulate CLI build compiler logs for Cursor premium fidelity
+
                             val simulatedResponse = when {
                                 command == "./gradlew build" || command == "./gradlew compile" -> {
                                     "Starting Gradle Daemon...\nGradle build daemon active.\n> Task :app:compileKotlin SUCCESS\n> Task :app:assembleDebug SUCCESS\n\nBUILD SUCCESSFUL in 4s\nAPK generated: wren-debug.apk (1.8 MB)\n$ "
@@ -452,19 +576,24 @@ fun IDEWorkspaceScreen(
                                     "wren-shell: command not found: $command. Try './gradlew build' or 'git status'.\n$ "
                                 }
                             }
+
                             terminalOutput = if (command == "clear") "$ " else terminalOutput + simulatedResponse
                             terminalInput = ""
                         },
                         modifier = Modifier.size(24.dp)
                     ) {
-                        Icon(Icons.Filled.Send, contentDescription = "Execute", tint = ElectricCyan, modifier = Modifier.size(14.dp))
+                        Icon(
+                            Icons.Filled.Send,
+                            contentDescription = "Execute",
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }
         }
     }
 
-    // Dialog: Create New Project
     if (showNewProjectDialog) {
         AlertDialog(
             onDismissRequest = { showNewProjectDialog = false },
@@ -495,7 +624,6 @@ fun IDEWorkspaceScreen(
                                 val response = NetworkClient.post("/projects", body)
                                 if (response.isSuccessful) {
                                     val responseBodyStr = response.body?.string()
-                                    // Parse and add new project
                                     val mapType = object : TypeToken<Map<String, Any>>() {}.type
                                     val map: Map<String, Any> = Gson().fromJson(responseBodyStr, mapType)
                                     val projectMap = map["project"] as Map<*, *>
@@ -512,7 +640,7 @@ fun IDEWorkspaceScreen(
                                         isLoading = false
                                     }
                                 }
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 withContext(Dispatchers.Main) { isLoading = false }
                             }
                         }
@@ -526,11 +654,10 @@ fun IDEWorkspaceScreen(
                     Text("Cancelar", color = TextMuted)
                 }
             },
-            containerColor = SecondaryCard
+            containerColor = com.wren.ide.core.theme.SecondaryCard
         )
     }
 
-    // Dialog: Create New File/Folder
     if (showNewFileDialog) {
         AlertDialog(
             onDismissRequest = { showNewFileDialog = false },
@@ -572,13 +699,12 @@ fun IDEWorkspaceScreen(
                                 try {
                                     val body = mapOf(
                                         "name" to newFileName,
-                                        "path" to (if (isNewFileDirectory) newFileName else newFileName),
+                                        "path" to newFileName,
                                         "isDirectory" to isNewFileDirectory,
                                         "content" to ""
                                     )
                                     val response = NetworkClient.post("/projects/${p.id}/files", body)
                                     if (response.isSuccessful) {
-                                        // Refetch files
                                         val fResponse = NetworkClient.get("/projects/${p.id}/files")
                                         if (fResponse.isSuccessful) {
                                             val b = fResponse.body?.string()
@@ -589,7 +715,7 @@ fun IDEWorkspaceScreen(
                                             }
                                         }
                                     }
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                     withContext(Dispatchers.Main) { isLoading = false }
                                 }
                             }
@@ -604,14 +730,11 @@ fun IDEWorkspaceScreen(
                     Text("Cancelar", color = TextMuted)
                 }
             },
-            containerColor = SecondaryCard
+            containerColor = com.wren.ide.core.theme.SecondaryCard
         )
     }
 }
 
-/**
- * Highly efficient regular-expression syntax highlighter logic mapping to dynamic styled text blocks.
- */
 fun highlightKotlinSyntax(text: String): AnnotatedString {
     return buildAnnotatedString {
         val keywords = setOf(
@@ -619,52 +742,60 @@ fun highlightKotlinSyntax(text: String): AnnotatedString {
             "if", "else", "for", "while", "return", "try", "catch", "throw",
             "null", "true", "false", "object", "private", "public", "protected"
         )
-        
+
         var currentIndex = 0
         val tokenRegex = Regex("""(//.*)|(".*?")|(\d+)|([a-zA-Z_][a-zA-Z0-9_]*)|([^\s])""")
-        
+
         tokenRegex.findAll(text).forEach { result ->
             val match = result.value
             val start = result.range.first
-            
-            // Add any plain spaces in between matches
+
             if (start > currentIndex) {
                 append(text.substring(currentIndex, start))
             }
-            
+
             when {
-                // Comment highlighting (Gray)
                 match.startsWith("//") -> {
-                    withStyle(style = SpanStyle(color = TextMuted, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)) {
+                    withStyle(
+                        style = SpanStyle(
+                            color = TextMuted,
+                            fontStyle = FontStyle.Italic
+                        )
+                    ) {
                         append(match)
                     }
                 }
-                // String highlighting (Green/Cyan light)
+
                 match.startsWith("\"") && match.endsWith("\"") -> {
                     withStyle(style = SpanStyle(color = TerminalGreen)) {
                         append(match)
                     }
                 }
-                // Numeric highlighting (Cyan)
+
                 match.all { it.isDigit() } -> {
                     withStyle(style = SpanStyle(color = ElectricCyan)) {
                         append(match)
                     }
                 }
-                // Keyword highlighting (Yellow/Orange)
+
                 keywords.contains(match) -> {
-                    withStyle(style = SpanStyle(color = EditorYellow, fontWeight = FontWeight.Bold)) {
+                    withStyle(
+                        style = SpanStyle(
+                            color = EditorYellow,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
                         append(match)
                     }
                 }
-                // Normal word text
+
                 else -> {
                     append(match)
                 }
             }
             currentIndex = result.range.last + 1
         }
-        
+
         if (currentIndex < text.length) {
             append(text.substring(currentIndex))
         }
