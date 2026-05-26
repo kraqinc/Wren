@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wren</string>
+    <string name="title_wren_ide">WREN IDE</string>
+    <string name="sub_title_studio">Estudio Cursor-en-la-Nube</string>
+    <string name="label_email">Correo Electrónico</string>
+    <string name="label_password">Contraseña</string>
+    <string name="btn_login">Iniciar Sesión</string>
+    <string name="btn_register">Registrarse Gratis</string>
+    <string name="toggle_login">¿Ya tienes cuenta? Inicia Sesión</string>
+    <string name="toggle_register">¿No tienes cuenta? Regístrate</string>
+    <string name="error_fill_fields">Por favor, llena todos los campos.</string>
+    <string name="error_network">Error de red: no se pudo contactar al servidor.</string>
+    
+    <!-- Workspace -->
+    <string name="header_projects">PROYECTOS</string>
+    <string name="header_files">ARCHIVOS</string>
+    <string name="hint_editor_empty">Crea o selecciona un archivo para empezar a programar.</string>
+    <string name="label_terminal">TERMINAL</string>
+    
+    <!-- AI Agent -->
+    <string name="ai_agent_title">Asistente AI Agent</string>
+    <string name="ai_initial_msg">¡Hola! ¿En qué modo deseas trabajar hoy? Puedes seleccionar Chat estándar, Planificador autónomo, Editor o Terminal en la barra superior.</string>
+    <string name="cost_points_suffix">Puntos</string>
+    <string name="label_proposed_actions">ACCIONES PROPUESTAS - REVISIÓN OBLIGATORIA</string>
+    <string name="desc_safety_warning">El planificador de Wren AI ha sugerido los siguientes cambios estructurales. Revísalos antes de confirmar:</string>
+    <string name="btn_confirm_execute">Confirmar y Ejecutar Acción (-1 Punto)</string>
+    <string name="btn_cancel_reject">Rechazar y Cancelar</string>
+    
+    <!-- Credits -->
+    <string name="title_wallet">Mi Billetera Wren</string>
+    <string name="label_balance">BALANCE DE PUNTOS</string>
+    <string name="label_account_tier">Nivel de Cuenta: Plan %1$s</string>
+    <string name="header_packages">RECARGAR PUNTOS &amp; SUSCRIPCIONES</string>
+    <string name="header_history">HISTORIAL DE TRANSACCIONES</string>
+    <string name="package_basic">Recarga Básica (+100 Puntos)</string>
+    <string name="package_premium">Recarga Premium (+500 Puntos)</string>
+    <string name="package_subscription">Plan Suscriptor Mensual (+1000 Pts/Mes)</string>
+    
+    <!-- Owner Console -->
+    <string name="title_owner_console">Consola del Propietario</string>
+    <string name="header_server_stats">ESTADÍSTICAS DEL SERVIDOR</string>
+    <string name="label_users">Usuarios</string>
+    <string name="label_total_points">Puntos Totales</string>
+    <string name="label_active_projects">Proyectos Activos</string>
+    <string name="label_consumed_points">Puntos Consumidos</string>
+    <string name="header_audit_logs">LOGS DE AUDITORÍA DE SEGURIDAD (RBAC)</string>
+</resources>

@@ -1,0 +1,70 @@
+name: Wren CI/CD Reproducible Build Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # 1. Secure Server CI
+  backend-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: wren-backend/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd wren-backend
+          npm install
+
+      - name: Compile Backend
+        run: |
+          cd wren-backend
+          npm run build
+
+  # 2. Android APK CI
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x wren-android/gradlew
+        continue-on-error: true
+
+      - name: Assemble Debug APK
+        run: |
+          cd wren-android
+          ./gradlew assembleDebug
+
+      - name: Upload Generated APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wren-IDE-Debug-APK
+          path: wren-android/app/build/outputs/apk/debug/app-debug.apk

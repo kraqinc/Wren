@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wren</string>
+    <string name="title_wren_ide">WREN IDE</string>
+    <string name="sub_title_studio">Облачная Студия-Курсор</string>
+    <string name="label_email">Электронная почта</string>
+    <string name="label_password">Пароль</string>
+    <string name="btn_login">Войти</string>
+    <string name="btn_register">Зарегистрироваться</string>
+    <string name="toggle_login">Уже есть аккаунт? Войти</string>
+    <string name="toggle_register">Нет аккаунта? Создать бесплатно</string>
+    <string name="error_fill_fields">Пожалуйста, заполните все поля.</string>
+    <string name="error_network">Ошибка сети: не удалось связаться с сервером.</string>
+    
+    <!-- Workspace -->
+    <string name="header_projects">ПРОЕКТЫ</string>
+    <string name="header_files">ФАЙЛЫ</string>
+    <string name="hint_editor_empty">Создайте или выберите файл для начала работы.</string>
+    <string name="label_terminal">ТЕРМИНАЛ</string>
+    
+    <!-- AI Agent -->
+    <string name="ai_agent_title">ИИ Ассистент Agent</string>
+    <string name="ai_initial_msg">Привет! В каком режиме вы хотите работать сегодня? Вы можете выбрать стандартный Чат, автономный Планировщик, Редактор или Терминал на верхней панели.</string>
+    <string name="cost_points_suffix">Баллы</string>
+    <string name="label_proposed_actions">ПРЕДЛОЖЕННЫЕ ДЕЙСТВИЯ - ОБЯЗАТЕЛЬНЫЙ ОСМОТР</string>
+    <string name="desc_safety_warning">ИИ Wren предложил следующие изменения структуры. Ознакомьтесь перед подтверждением:</string>
+    <string name="btn_confirm_execute">Подтвердить и выполнить действие (-1 балл)</string>
+    <string name="btn_cancel_reject">Отклонить и отменить</string>
+    
+    <!-- Credits -->
+    <string name="title_wallet">Мой Кошелек Wren</string>
+    <string name="label_balance">БАЛАНС БАЛЛОВ</string>
+    <string name="label_account_tier">Уровень аккаунта: Тариф %1$s</string>
+    <string name="header_packages">ПОПОЛНЕНИЕ БАЛЛОВ И ПОДПИСКИ</string>
+    <string name="header_history">ИСТОРИЯ ТРАНЗАКЦИЙ</string>
+    <string name="package_basic">Базовое пополнение (+100 баллов)</string>
+    <string name="package_premium">Премиум пополнение (+500 баллов)</string>
+    <string name="package_subscription">Ежемесячная подписка (+1000 баллов/мес)</string>
+    
+    <!-- Owner Console -->
+    <string name="title_owner_console">Консоль Владельца</string>
+    <string name="header_server_stats">ПОКАЗАТЕЛИ СЕРВЕРА</string>
+    <string name="label_users">Пользователи</string>
+    <string name="label_total_points">Всего баллов</string>
+    <string name="label_active_projects">Активные проекты</string>
+    <string name="label_consumed_points">Потраченные баллы</string>
+    <string name="header_audit_logs">ЖУРНАЛ АУДИТА БЕЗОПАСНОСТИ (RBAC)</string>
+</resources>

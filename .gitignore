@@ -1,0 +1,26 @@
+# Windows files
+Thumbs.db
+desktop.ini
+
+# Node.js backend
+wren-backend/node_modules/
+wren-backend/dist/
+wren-backend/data/
+wren-backend/.env
+
+# Android client
+wren-android/.gradle/
+wren-android/local.properties
+wren-android/app/build/
+wren-android/.cxx/
+wren-android/app/.cxx/
+
+# Gradle files
+.gradle
+build/
+
+# IDE files
+.idea/
+*.iml
+.DS_Store
+*.log
