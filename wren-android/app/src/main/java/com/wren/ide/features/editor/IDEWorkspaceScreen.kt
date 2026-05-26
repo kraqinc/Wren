@@ -87,7 +87,7 @@ import com.wren.ide.core.theme.EditorYellow
 import com.wren.ide.core.theme.ElectricCyan
 import com.wren.ide.core.theme.ErrorRed
 import com.wren.ide.core.theme.PrimaryObsidian
-import com.wren.ide.core.theme सेकondaryCard
+import com.wren.ide.core.theme SecondayCard
 import com.wren.ide.core.theme.TerminalGreen
 import com.wren.ide.core.theme.TextLight
 import com.wren.ide.core.theme.TextMuted
