@@ -45,4 +45,20 @@
     <string name="label_active_projects">Активные проекты</string>
     <string name="label_consumed_points">Потраченные баллы</string>
     <string name="header_audit_logs">ЖУРНАЛ АУДИТА БЕЗОПАСНОСТИ (RBAC)</string>
+    
+    <!-- Платежи -->
+    <string name="header_payment_methods">СПОСОБЫ ОПЛАТЫ</string>
+    <string name="label_paypal">PayPal</string>
+    <string name="label_paypal_active">✓ Активен</string>
+    <string name="label_paypal_secure">Безопасная оплата через paypal.me/KraqPro</string>
+    <string name="btn_pay_paypal">Оплатить через PayPal</string>
+    <string name="dialog_confirm_purchase">Подтвердить Покупку</string>
+    <string name="label_points">Баллы:</string>
+    <string name="label_price">Цена:</string>
+    <string name="msg_paypal_redirect">PayPal откроется для безопасного завершения оплаты.</string>
+    <string name="msg_payment_success">✓ Оплата %1$s обработана через PayPal — +%2$d баллов зачислено</string>
+    <string name="msg_payment_error_server">Ошибка сервера при обработке платежа.</string>
+    <string name="msg_payment_error_network">Ошибка сети при обработке транзакции.</string>
+    <string name="package_pro">Пакет Про (+1500 баллов)</string>
+    <string name="package_ultra">Пакет Ультра (+5000 баллов)</string>
 </resources>

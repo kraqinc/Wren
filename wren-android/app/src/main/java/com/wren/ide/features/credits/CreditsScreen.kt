@@ -1,5 +1,7 @@
 package com.wren.ide.features.credits
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,13 +12,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
@@ -27,6 +34,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * Payment package definition.
+ * @param id Backend package identifier
+ * @param title Human-readable label
+ * @param points Amount of Wren points granted
+ * @param priceUsd Dollar amount for PayPal redirect
+ * @param priceLabel Formatted display price
+ * @param isSubscription Whether this is a recurring package
+ */
+data class PaymentPackage(
+    val id: String,
+    val title: String,
+    val points: Int,
+    val priceUsd: String,
+    val priceLabel: String,
+    val isSubscription: Boolean = false
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreditsScreen(
@@ -34,11 +59,29 @@ fun CreditsScreen(
     onNavBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    
+    val context = LocalContext.current
+
     // States
     var historyLogs by remember { mutableStateOf<List<CreditLog>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    var selectedPackage by remember { mutableStateOf<PaymentPackage?>(null) }
+    var showPaymentDialog by remember { mutableStateOf(false) }
+
+    // Payment packages
+    val packages = remember {
+        listOf(
+            PaymentPackage("basic_100", "Starter Pack", 100, "1.99", "$1.99 USD"),
+            PaymentPackage("premium_500", "Premium Pack", 500, "6.99", "$6.99 USD"),
+            PaymentPackage("pro_1500", "Pro Pack", 1500, "14.99", "$14.99 USD"),
+            PaymentPackage("ultra_5000", "Ultra Pack", 5000, "39.99", "$39.99 USD"),
+            PaymentPackage(
+                "subscription_monthly", "Monthly Subscriber",
+                1000, "9.99", "$9.99 USD / Month",
+                isSubscription = true
+            )
+        )
+    }
 
     // Fetch credits history statement
     LaunchedEffect(Unit) {
@@ -135,65 +178,56 @@ fun CreditsScreen(
                 }
             }
 
+            // Payment Methods Header
+            item {
+                Text("MÉTODOS DE PAGO", color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // PayPal / Google Pay Info
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SecondaryCard),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Payment, contentDescription = null, tint = Color(0xFF0070BA), modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("PayPal", color = Color(0xFF0070BA), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text("✓ Activo", color = TerminalGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Pago seguro vía paypal.me/KraqPro",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
             // Pricing Package Header
             item {
                 Text("RECARGAR PUNTOS & SUSCRIPCIONES", color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
 
             // Package Options List
-            val packages = listOf(
-                Triple("basic_100", "Recarga Inicial (+100 Puntos)", "$1.99 USD"),
-                Triple("premium_500", "Recarga Premium (+500 Puntos)", "$6.99 USD"),
-                Triple("subscription_monthly", "Plan Suscriptor Mensual (+1000 Pts/Mes)", "$9.99 USD / Mes")
-            )
-
-            items(packages) { (pkgId, title, price) ->
+            items(packages) { pkg ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SecondaryCard),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, BorderGray, RoundedCornerShape(10.dp))
+                        .border(
+                            width = 1.dp,
+                            color = if (selectedPackage?.id == pkg.id) ElectricCyan else BorderGray,
+                            shape = RoundedCornerShape(10.dp)
+                        )
                         .clickable {
-                            isLoading = true
-                            scope.launch(Dispatchers.IO) {
-                                try {
-                                    val body = mapOf("packageId" to pkgId)
-                                    val response = NetworkClient.post("/credits/recharge", body)
-                                    if (response.isSuccessful) {
-                                        val b = response.body?.string()
-                                        val map = Gson().fromJson(b, Map::class.java)
-                                        val newBal = (map["newBalance"] as Double).toInt()
-                                        val newTier = map["tier"] as String
-                                        
-                                        // Update Session storage cache
-                                        sessionManager.userCredits = newBal
-                                        sessionManager.userTier = newTier
-
-                                        // Refresh transaction logs history
-                                        val hRes = NetworkClient.get("/credits/history")
-                                        val hLogs = if (hRes.isSuccessful) {
-                                            Gson().fromJson(hRes.body?.string(), CreditHistoryResponse::class.java).logs
-                                        } else emptyList()
-
-                                        withContext(Dispatchers.Main) {
-                                            historyLogs = hLogs
-                                            actionMessage = "Compra procesada con éxito: $title"
-                                            isLoading = false
-                                        }
-                                    } else {
-                                        withContext(Dispatchers.Main) {
-                                            actionMessage = "Error en el servidor al procesar el pago."
-                                            isLoading = false
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    withContext(Dispatchers.Main) {
-                                        actionMessage = "Error de red al procesar transacción."
-                                        isLoading = false
-                                    }
-                                }
-                            }
+                            selectedPackage = pkg
+                            showPaymentDialog = true
                         }
                 ) {
                     Row(
@@ -201,11 +235,23 @@ fun CreditsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(title, color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(if (pkgId.startsWith("sub")) "Incluye acceso prioritario" else "Puntos de consumo", color = TextMuted, fontSize = 11.sp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(pkg.title, color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(
+                                "+${pkg.points} Puntos" + if (pkg.isSubscription) " / Mes" else "",
+                                color = TextMuted,
+                                fontSize = 11.sp
+                            )
                         }
-                        Text(price, color = ElectricCyan, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(pkg.priceLabel, color = ElectricCyan, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Icon(
+                                Icons.Filled.ShoppingCart,
+                                contentDescription = "Comprar",
+                                tint = ElectricCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -252,5 +298,123 @@ fun CreditsScreen(
                 }
             }
         }
+    }
+
+    // Payment Confirmation Dialog with PayPal redirect
+    if (showPaymentDialog && selectedPackage != null) {
+        val pkg = selectedPackage!!
+        AlertDialog(
+            onDismissRequest = {
+                showPaymentDialog = false
+                selectedPackage = null
+            },
+            title = {
+                Text("Confirmar Compra", color = TextLight, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        text = pkg.title,
+                        color = ElectricCyan,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Divider(color = BorderGray)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Puntos:", color = TextMuted)
+                        Text("+${pkg.points} Pts", color = EditorYellow, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Precio:", color = TextMuted)
+                        Text(pkg.priceLabel, color = ElectricCyan, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Se abrirá PayPal para completar el pago de forma segura.",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Open PayPal.me URL with the amount
+                        val paypalUrl = "https://paypal.me/KraqPro/${pkg.priceUsd}"
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl))
+                        context.startActivity(intent)
+
+                        // After payment redirect, register purchase on backend
+                        isLoading = true
+                        showPaymentDialog = false
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val body = mapOf("packageId" to pkg.id)
+                                val response = NetworkClient.post("/credits/recharge", body)
+                                if (response.isSuccessful) {
+                                    val b = response.body?.string()
+                                    val map = Gson().fromJson(b, Map::class.java)
+                                    val newBal = (map["newBalance"] as Double).toInt()
+                                    val newTier = map["tier"] as String
+
+                                    // Update Session storage cache
+                                    sessionManager.userCredits = newBal
+                                    sessionManager.userTier = newTier
+
+                                    // Refresh transaction logs history
+                                    val hRes = NetworkClient.get("/credits/history")
+                                    val hLogs = if (hRes.isSuccessful) {
+                                        Gson().fromJson(hRes.body?.string(), CreditHistoryResponse::class.java).logs
+                                    } else emptyList()
+
+                                    withContext(Dispatchers.Main) {
+                                        historyLogs = hLogs
+                                        actionMessage = "✓ Pago de ${pkg.priceLabel} procesado vía PayPal — +${pkg.points} Pts acreditados"
+                                        isLoading = false
+                                    }
+                                } else {
+                                    withContext(Dispatchers.Main) {
+                                        actionMessage = "Error en el servidor al procesar el pago."
+                                        isLoading = false
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    actionMessage = "Error de red al procesar transacción."
+                                    isLoading = false
+                                }
+                            }
+                        }
+                        selectedPackage = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0070BA)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Payment, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Pagar con PayPal", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPaymentDialog = false
+                    selectedPackage = null
+                }) {
+                    Text("Cancelar", color = TextMuted)
+                }
+            },
+            containerColor = SecondaryCard
+        )
     }
 }

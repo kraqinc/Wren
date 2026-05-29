@@ -45,7 +45,7 @@ async function runSecurityVerification() {
     console.log('[3/5] Auditing Privilege Escalation Prevention (RBAC Gate)...');
     
     // Simulate user trying to read owner stats (should fail role check)
-    const activeUserRole: string = 'USER';
+    let activeUserRole: string = 'USER';
     if (activeUserRole !== 'OWNER' && activeUserRole !== 'SUPER_ADMIN') {
       const auditLogId = crypto.randomUUID();
       await db.run(

@@ -87,7 +87,7 @@ import com.wren.ide.core.theme.EditorYellow
 import com.wren.ide.core.theme.ElectricCyan
 import com.wren.ide.core.theme.ErrorRed
 import com.wren.ide.core.theme.PrimaryObsidian
-import com.wren.ide.core.theme SecondayCard
+import com.wren.ide.core.theme.SecondaryCard
 import com.wren.ide.core.theme.TerminalGreen
 import com.wren.ide.core.theme.TextLight
 import com.wren.ide.core.theme.TextMuted
@@ -553,7 +553,7 @@ fun IDEWorkspaceScreen(
                         cursorBrush = SolidColor(ElectricCyan),
                         modifier = Modifier
                             .weight(1f)
-                            .padding(start = 4.dp, vertical = 4.dp)
+                            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
                             .clickable { }
                     )
                     IconButton(

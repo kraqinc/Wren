@@ -249,7 +249,8 @@ fun OwnerAdminScreen(
                                             // Reload Audit Logs and users list
                                             val usersRes = NetworkClient.get("/owner/users")
                                             val mapType = object : TypeToken<Map<String, List<User>>>() {}.type
-                                            val usersData: List<User> = Gson().fromJson(usersRes.body?.string(), mapType)["users"] ?: emptyList()
+                                            val usersMap: Map<String, List<User>> = Gson().fromJson(usersRes.body?.string(), mapType)
+                                            val usersData: List<User> = usersMap["users"] ?: emptyList()
                                             
                                             val auditRes = NetworkClient.get("/owner/audit-logs")
                                             val auditData = Gson().fromJson(auditRes.body?.string(), AuditLogsResponse::class.java).logs

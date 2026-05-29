@@ -45,4 +45,20 @@
     <string name="label_active_projects">Active Projects</string>
     <string name="label_consumed_points">Consumed Points</string>
     <string name="header_audit_logs">SECURITY AUDIT LOGS (RBAC)</string>
+    
+    <!-- Payments -->
+    <string name="header_payment_methods">PAYMENT METHODS</string>
+    <string name="label_paypal">PayPal</string>
+    <string name="label_paypal_active">✓ Active</string>
+    <string name="label_paypal_secure">Secure payment via paypal.me/KraqPro</string>
+    <string name="btn_pay_paypal">Pay with PayPal</string>
+    <string name="dialog_confirm_purchase">Confirm Purchase</string>
+    <string name="label_points">Points:</string>
+    <string name="label_price">Price:</string>
+    <string name="msg_paypal_redirect">PayPal will open to complete the payment securely.</string>
+    <string name="msg_payment_success">✓ Payment of %1$s processed via PayPal — +%2$d Pts credited</string>
+    <string name="msg_payment_error_server">Server error processing payment.</string>
+    <string name="msg_payment_error_network">Network error processing transaction.</string>
+    <string name="package_pro">Pro Pack (+1500 Points)</string>
+    <string name="package_ultra">Ultra Pack (+5000 Points)</string>
 </resources>
