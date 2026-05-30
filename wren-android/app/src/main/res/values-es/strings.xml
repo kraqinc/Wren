@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Wren</string>
     <string name="title_wren_ide">WREN IDE</string>
-    <string name="sub_title_studio">Estudio Cursor-en-la-Nube</string>
+    <string name="sub_title_studio">Tu entorno de desarrollo inteligente</string>
     <string name="label_email">Correo Electrónico</string>
     <string name="label_password">Contraseña</string>
     <string name="btn_login">Iniciar Sesión</string>

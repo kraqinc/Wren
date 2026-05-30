@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Wren</string>
     <string name="title_wren_ide">WREN IDE</string>
-    <string name="sub_title_studio">Облачная Студия-Курсор</string>
+    <string name="sub_title_studio">Ваша интеллектуальная среда разработки</string>
     <string name="label_email">Электронная почта</string>
     <string name="label_password">Пароль</string>
     <string name="btn_login">Войти</string>

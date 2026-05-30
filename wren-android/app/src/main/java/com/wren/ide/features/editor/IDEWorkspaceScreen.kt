@@ -125,8 +125,8 @@ fun IDEWorkspaceScreen(
 
     LaunchedEffect(Unit) {
         isLoading = true
-        scope.launch(Dispatchers.IO) {
-            try {
+        try {
+            withContext(Dispatchers.IO) {
                 val response = NetworkClient.get("/projects")
                 if (response.isSuccessful) {
                     val body = response.body?.string()
@@ -141,17 +141,17 @@ fun IDEWorkspaceScreen(
                 } else {
                     withContext(Dispatchers.Main) { isLoading = false }
                 }
-            } catch (_: Exception) {
-                withContext(Dispatchers.Main) { isLoading = false }
             }
+        } catch (_: Throwable) {
+            isLoading = false
         }
     }
 
     LaunchedEffect(selectedProject) {
         selectedProject?.let { project ->
             isLoading = true
-            scope.launch(Dispatchers.IO) {
-                try {
+            try {
+                withContext(Dispatchers.IO) {
                     val response = NetworkClient.get("/projects/${project.id}/files")
                     if (response.isSuccessful) {
                         val body = response.body?.string()
@@ -167,9 +167,9 @@ fun IDEWorkspaceScreen(
                     } else {
                         withContext(Dispatchers.Main) { isLoading = false }
                     }
-                } catch (_: Exception) {
-                    withContext(Dispatchers.Main) { isLoading = false }
                 }
+            } catch (_: Throwable) {
+                isLoading = false
             }
         }
     }
@@ -235,11 +235,7 @@ fun IDEWorkspaceScreen(
                             )
                         }
                     }
-                    IconButton(onClick = {
-                        sessionManager.clearSession()
-                        NetworkClient.setAuthToken(null)
-                        onLogout()
-                    }) {
+                    IconButton(onClick = { onLogout() }) {
                         Icon(
                             Icons.Filled.Logout,
                             contentDescription = "Logout",
@@ -563,8 +559,8 @@ fun IDEWorkspaceScreen(
                             terminalOutput += "$command\n"
 
                             val simulatedResponse = when {
-                                command == "./gradlew build" || command == "./gradlew compile" -> {
-                                    "Starting Gradle Daemon...\nGradle build daemon active.\n> Task :app:compileKotlin SUCCESS\n> Task :app:assembleDebug SUCCESS\n\nBUILD SUCCESSFUL in 4s\nAPK generated: wren-debug.apk (1.8 MB)\n$ "
+                                command == "wren build" || command == "wren compile" -> {
+                                    "Wren Build Engine v1.0...\n> Compiling sources...\n> Task :compile SUCCESS\n> Task :assemble SUCCESS\n\nBUILD SUCCESSFUL in 4s\nAPK generated: wren-app.apk (1.8 MB)\n$ "
                                 }
                                 command.startsWith("git ") -> {
                                     "git branch main: local tracking active.\nEverything up-to-date.\n$ "
@@ -573,7 +569,7 @@ fun IDEWorkspaceScreen(
                                     ""
                                 }
                                 else -> {
-                                    "wren-shell: command not found: $command. Try './gradlew build' or 'git status'.\n$ "
+                                    "wren-shell: command not found: $command. Try 'wren build' or 'git status'.\n$ "
                                 }
                             }
 

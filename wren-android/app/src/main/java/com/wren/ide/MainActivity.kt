@@ -3,6 +3,8 @@ package com.wren.ide
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import com.wren.ide.core.network.NetworkClient
 import com.wren.ide.core.storage.SessionManager
@@ -29,39 +31,50 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(if (sessionManager.isLoggedIn) "workspace" else "auth") 
                 }
 
-                when (currentScreen) {
-                    "auth" -> {
-                        AuthScreen(
-                            sessionManager = sessionManager,
-                            onAuthSuccess = { currentScreen = "workspace" }
-                        )
-                    }
-                    "workspace" -> {
-                        IDEWorkspaceScreen(
-                            sessionManager = sessionManager,
-                            onNavToAI = { currentScreen = "ai_agent" },
-                            onNavToCredits = { currentScreen = "credits" },
-                            onNavToOwner = { currentScreen = "owner_dashboard" },
-                            onLogout = { currentScreen = "auth" }
-                        )
-                    }
-                    "ai_agent" -> {
-                        AIAgentScreen(
-                            sessionManager = sessionManager,
-                            onNavBack = { currentScreen = "workspace" }
-                        )
-                    }
-                    "credits" -> {
-                        CreditsScreen(
-                            sessionManager = sessionManager,
-                            onNavBack = { currentScreen = "workspace" }
-                        )
-                    }
-                    "owner_dashboard" -> {
-                        OwnerAdminScreen(
-                            sessionManager = sessionManager,
-                            onNavBack = { currentScreen = "workspace" }
-                        )
+                // Crossfade prevents abrupt recomposition crashes during navigation
+                Crossfade(
+                    targetState = currentScreen,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "screen_transition"
+                ) { screen ->
+                    when (screen) {
+                        "auth" -> {
+                            AuthScreen(
+                                sessionManager = sessionManager,
+                                onAuthSuccess = { currentScreen = "workspace" }
+                            )
+                        }
+                        "workspace" -> {
+                            IDEWorkspaceScreen(
+                                sessionManager = sessionManager,
+                                onNavToAI = { currentScreen = "ai_agent" },
+                                onNavToCredits = { currentScreen = "credits" },
+                                onNavToOwner = { currentScreen = "owner_dashboard" },
+                                onLogout = {
+                                    sessionManager.clearSession()
+                                    NetworkClient.setAuthToken(null)
+                                    currentScreen = "auth"
+                                }
+                            )
+                        }
+                        "ai_agent" -> {
+                            AIAgentScreen(
+                                sessionManager = sessionManager,
+                                onNavBack = { currentScreen = "workspace" }
+                            )
+                        }
+                        "credits" -> {
+                            CreditsScreen(
+                                sessionManager = sessionManager,
+                                onNavBack = { currentScreen = "workspace" }
+                            )
+                        }
+                        "owner_dashboard" -> {
+                            OwnerAdminScreen(
+                                sessionManager = sessionManager,
+                                onNavBack = { currentScreen = "workspace" }
+                            )
+                        }
                     }
                 }
             }
