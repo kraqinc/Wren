@@ -2,161 +2,237 @@ import express from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db/database.js';
 import { authenticateToken, AuthenticatedRequest, checkCreditsCircuitBreaker } from '../middleware/auth.js';
+import { generate, AiMode, AiFileContext } from '../services/llm.js';
 
 const router = express.Router();
 
-// AI Chat endpoint (Deducts 1 credit)
+const VALID_MODES: AiMode[] = ['chat', 'planificador', 'editor', 'terminal', 'automatizador'];
+
+/**
+ * Atomically debit one credit inside a transaction. Returns the new balance,
+ * or null when the user has insufficient credits.
+ */
+async function debitOneCredit(userId: string, reason: string): Promise<number | null> {
+  const db = getDb();
+  const timestamp = new Date().toISOString();
+  await db.run('BEGIN TRANSACTION;');
+  try {
+    const record = await db.get('SELECT balance FROM credits WHERE user_id = ?', [userId]);
+    if (!record || record.balance <= 0) {
+      await db.run('ROLLBACK;');
+      return null;
+    }
+    const newBalance = record.balance - 1;
+    await db.run('UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?', [newBalance, timestamp, userId]);
+    await db.run(
+      'INSERT INTO credit_logs (id, user_id, amount, reason, timestamp) VALUES (?, ?, ?, ?, ?)',
+      [crypto.randomUUID(), userId, -1, reason, timestamp]
+    );
+    await db.run('COMMIT;');
+    return newBalance;
+  } catch (err) {
+    await db.run('ROLLBACK;');
+    throw err;
+  }
+}
+
+async function loadProjectContext(projectId: string | undefined, userId: string): Promise<{ name?: string; files: AiFileContext[] }> {
+  if (!projectId) return { files: [] };
+  const db = getDb();
+  const project = await db.get('SELECT name FROM projects WHERE id = ? AND user_id = ?', [projectId, userId]);
+  if (!project) return { files: [] };
+  const files = await db.all(
+    'SELECT path, content FROM files WHERE project_id = ? AND is_directory = 0 ORDER BY path LIMIT 40',
+    [projectId]
+  );
+  return { name: project.name, files: files as AiFileContext[] };
+}
+
+async function saveChatTurn(
+  userId: string,
+  projectId: string | undefined,
+  role: 'user' | 'assistant',
+  mode: string,
+  content: string,
+  actions: unknown[] | null,
+  provider: string | null
+): Promise<void> {
+  const db = getDb();
+  await db.run(
+    'INSERT INTO chat_history (id, user_id, project_id, role, mode, content, actions, provider, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      crypto.randomUUID(),
+      userId,
+      projectId || null,
+      role,
+      mode,
+      content,
+      actions ? JSON.stringify(actions) : null,
+      provider,
+      new Date().toISOString(),
+    ]
+  );
+}
+
+// AI Chat endpoint (Deducts 1 credit) — routes to a real LLM provider or local engine
 router.post('/chat', authenticateToken, checkCreditsCircuitBreaker, async (req: AuthenticatedRequest, res) => {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
-  const { prompt, mode, projectId, context } = req.body;
+  const { prompt, mode, projectId } = req.body;
 
-  if (!prompt) {
+  if (typeof prompt !== 'string' || prompt.trim().length === 0) {
     return res.status(400).json({ error: 'Prompt content is required.' });
   }
+  if (prompt.length > 16000) {
+    return res.status(400).json({ error: 'Prompt exceeds the maximum allowed length.' });
+  }
 
-  const activeMode = mode || 'chat'; // chat, planificador, editor, automatizador, terminal
+  const activeMode: AiMode = VALID_MODES.includes(mode) ? mode : 'chat';
 
   try {
-    const db = getDb();
-    const timestamp = new Date().toISOString();
+    const userId = req.user.id;
 
-    // 1. Process point deduction inside secure transaction
-    await db.run('BEGIN TRANSACTION;');
-    let currentBalance = 0;
+    // 1. Debit a credit atomically before doing work
+    const remainingCredits = await debitOneCredit(userId, `AI_${activeMode.toUpperCase()}`);
+    if (remainingCredits === null) {
+      return res.status(402).json({ error: 'Insufficient credits.' });
+    }
 
+    // 2. Gather project context and generate a response
+    const context = await loadProjectContext(projectId, userId);
+    const result = await generate({
+      prompt: prompt.trim(),
+      mode: activeMode,
+      projectName: context.name,
+      files: context.files,
+    });
+
+    // 3. Persist the conversation turn (best-effort)
     try {
-      const creditsRecord = await db.get('SELECT balance FROM credits WHERE user_id = ?', [req.user.id]);
-      if (!creditsRecord || creditsRecord.balance <= 0) {
-        await db.run('ROLLBACK;');
-        return res.status(402).json({ error: 'Insufficient credits.' });
-      }
-
-      currentBalance = creditsRecord.balance - 1;
-
-      // Decrement credits
-      await db.run(
-        'UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?',
-        [currentBalance, timestamp, req.user.id]
-      );
-
-      // Log the consumption
-      const logId = crypto.randomUUID();
-      await db.run(
-        'INSERT INTO credit_logs (id, user_id, amount, reason, timestamp) VALUES (?, ?, ?, ?, ?)',
-        [logId, req.user.id, -1, `AI_${activeMode.toUpperCase()}`, timestamp]
-      );
-
-      await db.run('COMMIT;');
-    } catch (txError) {
-      await db.run('ROLLBACK;');
-      throw txError;
+      await saveChatTurn(userId, projectId, 'user', activeMode, prompt.trim(), null, null);
+      await saveChatTurn(userId, projectId, 'assistant', activeMode, result.response, result.actions, result.provider);
+    } catch (histErr) {
+      console.error('Chat history persistence failed (non-fatal):', histErr);
     }
 
-    // 2. Generate Response (Proxy to LLM or use highly tailored local model response)
-    let aiResponseText = '';
-    let suggestedActions: any[] = [];
-
-    // Real LLM Integrations can easily be hooked up here
-    if (process.env.GEMINI_API_KEY) {
-      // Connect to external Gemini / OpenAI API
-      aiResponseText = `[Real LLM Proxy Active] Gemini responded to your instruction under ${activeMode} mode.`;
-    } else {
-      // Local Smart Fallback Responses (Extremely high-quality mock responses for instant testing)
-      if (activeMode === 'planificador') {
-        aiResponseText = `### Planificador de Wren 🧠\n\nHe analizado tu solicitud: "${prompt}".\nAquí tienes un plan estructurado para implementarlo en tu proyecto:\n\n1. **Fase 1: Creación de estructura** - Generaremos los archivos principales.\n2. **Fase 2: Conexión** - Enlazaremos los componentes y la lógica.\n3. **Fase 3: Pruebas** - Validaremos su funcionamiento.\n\n¿Deseas aplicar estos cambios automáticamente?`;
-        suggestedActions = [
-          { type: 'CREATE_FILE', path: 'src/Main.kt', description: 'Crear clase Main con el punto de entrada inicial' },
-          { type: 'CREATE_FILE', path: 'src/Utils.kt', description: 'Crear utilidades generales' }
-        ];
-      } else if (activeMode === 'terminal') {
-        aiResponseText = `### Terminal Agent 💻\n\nHe analizado el comando que quieres correr. Te sugiero ejecutar la siguiente rutina de compilación:\n\n\`\`\`bash\n./gradlew build\n\`\`\`\n\nEste comando descargará las dependencias necesarias y compilará el APK de pruebas de forma segura.`;
-        suggestedActions = [
-          { type: 'EXECUTE_COMMAND', command: './gradlew build', description: 'Ejecutar compilación en terminal' }
-        ];
-      } else if (activeMode === 'editor') {
-        aiResponseText = `### Editor Inteligente 📝\n\nHe analizado el código actual de tu proyecto. Te sugiero optimizar la función agregando un manejador de excepciones:\n\n\`\`\`kotlin\nfun loadData() {\n    try {\n        // Carga de datos segura\n    } catch (e: Exception) {\n        Log.e("Wren", "Error al cargar", e)\n    }\n}\n\`\`\``;
-        suggestedActions = [
-          { type: 'EDIT_FILE', path: 'src/Main.kt', content: 'fun loadData() {\n    try {\n        // Carga de datos segura\n    } catch (e: Exception) {\n        Log.e("Wren", "Error al cargar", e)\n    }\n}', description: 'Agregar try-catch en loadData()' }
-        ];
-      } else {
-        // Standard Chat Mode
-        aiResponseText = `### Asistente Wren AI 🤖\n\n¡Hola! Estoy listo para ayudarte a codificar tu app en Wren.\n\nHe recibido tu instrucción: **"${prompt}"** en modo **${activeMode}**.\n\nComo tu IDE inteligente en la nube, puedo guiarte en Kotlin, Compose, configurar el backend en Node, optimizar tus bases de datos Room, o escribir pruebas. Dime cuál es tu siguiente paso de desarrollo y me encargo.`;
-      }
-    }
-
-    // Save Chat History for user audit/viewing
-    // (Optional, can be stored in client Room DB or server. We provide response and update points)
     return res.json({
       success: true,
       mode: activeMode,
-      response: aiResponseText,
-      actions: suggestedActions,
-      remainingCredits: currentBalance,
-      timestamp
+      response: result.response,
+      actions: result.actions,
+      provider: result.provider,
+      model: result.model,
+      remainingCredits,
+      timestamp: new Date().toISOString(),
     });
-
   } catch (err) {
-    console.error('AI Chat proxy failure:', err);
+    console.error('AI Chat failure:', err);
     return res.status(500).json({ error: 'Server error during AI request processing.' });
   }
 });
 
-// Autonomous Agent Action Executor (Deducts 1 credit)
+// Autonomous Agent Action Executor (Deducts 1 credit) — persists file changes when possible
 router.post('/agent/execute', authenticateToken, checkCreditsCircuitBreaker, async (req: AuthenticatedRequest, res) => {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
-  const { action, projectId, details } = req.body;
+  const { action, projectId, path: filePath, content, command, details } = req.body;
 
   if (!action) {
     return res.status(400).json({ error: 'Agent action parameter is required.' });
   }
 
   try {
+    const userId = req.user.id;
     const db = getDb();
-    const timestamp = new Date().toISOString();
 
-    // Deduct 1 credit for autonomous execution
-    await db.run('BEGIN TRANSACTION;');
-    let currentBalance = 0;
-
-    try {
-      const creditsRecord = await db.get('SELECT balance FROM credits WHERE user_id = ?', [req.user.id]);
-      if (!creditsRecord || creditsRecord.balance <= 0) {
-        await db.run('ROLLBACK;');
-        return res.status(402).json({ error: 'Insufficient credits.' });
-      }
-
-      currentBalance = creditsRecord.balance - 1;
-
-      await db.run(
-        'UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?',
-        [currentBalance, timestamp, req.user.id]
-      );
-
-      const logId = crypto.randomUUID();
-      await db.run(
-        'INSERT INTO credit_logs (id, user_id, amount, reason, timestamp) VALUES (?, ?, ?, ?, ?)',
-        [logId, req.user.id, -1, 'AGENT_ACTION_EXEC', timestamp]
-      );
-
-      await db.run('COMMIT;');
-    } catch (txError) {
-      await db.run('ROLLBACK;');
-      throw txError;
+    const remainingCredits = await debitOneCredit(userId, 'AGENT_ACTION_EXEC');
+    if (remainingCredits === null) {
+      return res.status(402).json({ error: 'Insufficient credits.' });
     }
 
-    // Return the execution summary
+    let applied = false;
+    let executionLog = `Agent executed action: ${action}.`;
+
+    // When a project + file are supplied, actually persist the change server-side.
+    if (projectId && (action === 'CREATE_FILE' || action === 'EDIT_FILE') && typeof filePath === 'string') {
+      const project = await db.get('SELECT id FROM projects WHERE id = ? AND user_id = ?', [projectId, userId]);
+      if (project) {
+        const cleanContent = typeof content === 'string' ? stripDiffMarkers(content) : '';
+        const existing = await db.get('SELECT id FROM files WHERE project_id = ? AND path = ?', [projectId, filePath]);
+        const timestamp = new Date().toISOString();
+        if (existing) {
+          await db.run('UPDATE files SET content = ? WHERE id = ?', [cleanContent, existing.id]);
+        } else {
+          const name = filePath.split('/').pop() || filePath;
+          await db.run(
+            'INSERT INTO files (id, project_id, name, path, is_directory, content, parent_id) VALUES (?, ?, ?, ?, 0, ?, NULL)',
+            [crypto.randomUUID(), projectId, name, filePath, cleanContent]
+          );
+        }
+        await db.run('UPDATE projects SET updated_at = ? WHERE id = ?', [timestamp, projectId]);
+        applied = true;
+        executionLog = `${existing ? 'Updated' : 'Created'} file ${filePath} in project.`;
+      }
+    } else if (action === 'EXECUTE_COMMAND' && typeof command === 'string') {
+      executionLog = `Command queued for client-side execution: ${command}`;
+    }
+
     return res.json({
       success: true,
       action,
+      applied,
       status: 'COMPLETED',
-      remainingCredits: currentBalance,
-      executionLog: `Agent successfully ran action: ${action}. Details: ${JSON.stringify(details || {})}`,
-      timestamp
+      remainingCredits,
+      executionLog: `${executionLog}${details ? ' Details: ' + JSON.stringify(details) : ''}`,
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     console.error('AI Agent execution failure:', err);
     return res.status(500).json({ error: 'Server error executing autonomous agent action.' });
   }
 });
+
+// Fetch persisted chat history for the authenticated user (optionally scoped to a project)
+router.get('/history', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
+  const { projectId } = req.query;
+
+  try {
+    const db = getDb();
+    const rows = projectId
+      ? await db.all(
+          'SELECT id, role, mode, content, actions, provider, created_at FROM chat_history WHERE user_id = ? AND project_id = ? ORDER BY created_at ASC LIMIT 200',
+          [req.user.id, projectId]
+        )
+      : await db.all(
+          'SELECT id, role, mode, content, actions, provider, created_at FROM chat_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 200',
+          [req.user.id]
+        );
+
+    const messages = rows.map((r) => ({
+      ...r,
+      actions: r.actions ? safeJsonParse(r.actions) : [],
+    }));
+    return res.json({ messages });
+  } catch (err) {
+    console.error('Fetch chat history failure:', err);
+    return res.status(500).json({ error: 'Server error retrieving chat history.' });
+  }
+});
+
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return [];
+  }
+}
+
+/** Removes leading unified-diff markers so stored file content is clean source. */
+function stripDiffMarkers(content: string): string {
+  return content
+    .split('\n')
+    .filter((line) => !line.startsWith('-'))
+    .map((line) => (line.startsWith('+') ? line.slice(1) : line))
+    .join('\n');
+}
 
 export default router;

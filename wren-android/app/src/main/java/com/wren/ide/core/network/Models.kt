@@ -62,6 +62,8 @@ data class ChatResponse(
     val mode: String,
     val response: String,
     val actions: List<ChatAction>?,
+    val provider: String? = null,
+    val model: String? = null,
     val remainingCredits: Int,
     val timestamp: String
 )

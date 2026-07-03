@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { getDb } from '../db/database.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'wren-super-secret-key-2026-mobile-ide';
+import { JWT_SECRET } from '../config.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

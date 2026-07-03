@@ -3,6 +3,8 @@ package com.wren.ide.features.editor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,7 +32,9 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MonetizationOn
@@ -39,6 +45,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,23 +67,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.wren.ide.core.editor.EditorInput
+import com.wren.ide.core.editor.SyntaxHighlighter
 import com.wren.ide.core.network.FileItem
 import com.wren.ide.core.network.NetworkClient
 import com.wren.ide.core.network.Project
@@ -95,7 +100,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun IDEWorkspaceScreen(
     sessionManager: SessionManager,
@@ -123,6 +128,23 @@ fun IDEWorkspaceScreen(
     var newFileName by remember { mutableStateOf("") }
     var isNewFileDirectory by remember { mutableStateOf(false) }
 
+    var contextMenuFileId by remember { mutableStateOf<String?>(null) }
+    var renameTarget by remember { mutableStateOf<FileItem?>(null) }
+    var renameValue by remember { mutableStateOf("") }
+
+    fun reloadFiles(projectId: String) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val res = NetworkClient.get("/projects/$projectId/files")
+                if (res.isSuccessful) {
+                    val data = Gson().fromJson(res.body?.string(), ProjectFilesResponse::class.java)
+                    withContext(Dispatchers.Main) { files = data.files }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         isLoading = true
         try {
@@ -149,6 +171,7 @@ fun IDEWorkspaceScreen(
 
     LaunchedEffect(selectedProject) {
         selectedProject?.let { project ->
+            sessionManager.activeProjectId = project.id
             isLoading = true
             try {
                 withContext(Dispatchers.IO) {
@@ -343,31 +366,70 @@ fun IDEWorkspaceScreen(
                                 .padding(horizontal = 8.dp)
                         ) {
                             items(files) { file ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            if (file.is_directory == 0) {
-                                                selectedFile = file
-                                                codeContent = TextFieldValue(file.content ?: "")
+                                Box {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (file.is_directory == 0) {
+                                                        selectedFile = file
+                                                        codeContent = TextFieldValue(file.content ?: "")
+                                                    }
+                                                },
+                                                onLongClick = { contextMenuFileId = file.id }
+                                            )
+                                            .padding(vertical = 4.dp, horizontal = 4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (file.is_directory == 1) Icons.Filled.Folder else Icons.Filled.Description,
+                                            contentDescription = null,
+                                            tint = if (file.is_directory == 1) ElectricCyan else TextMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = file.name,
+                                            color = if (selectedFile?.id == file.id) ElectricCyan else TextLight,
+                                            fontSize = 13.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = contextMenuFileId == file.id,
+                                        onDismissRequest = { contextMenuFileId = null },
+                                        modifier = Modifier.background(SecondaryCard)
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Renombrar", color = TextLight) },
+                                            leadingIcon = { Icon(Icons.Filled.DriveFileRenameOutline, null, tint = ElectricCyan) },
+                                            onClick = {
+                                                contextMenuFileId = null
+                                                renameTarget = file
+                                                renameValue = file.name
                                             }
-                                        }
-                                        .padding(vertical = 4.dp, horizontal = 4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (file.is_directory == 1) Icons.Filled.Folder else Icons.Filled.Description,
-                                        contentDescription = null,
-                                        tint = if (file.is_directory == 1) ElectricCyan else TextMuted,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = file.name,
-                                        color = if (selectedFile?.id == file.id) ElectricCyan else TextLight,
-                                        fontSize = 13.sp,
-                                        maxLines = 1
-                                    )
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar", color = ErrorRed) },
+                                            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = ErrorRed) },
+                                            onClick = {
+                                                contextMenuFileId = null
+                                                val project = selectedProject ?: return@DropdownMenuItem
+                                                if (selectedFile?.id == file.id) {
+                                                    selectedFile = null
+                                                }
+                                                scope.launch(Dispatchers.IO) {
+                                                    try {
+                                                        NetworkClient.delete("/projects/${project.id}/files/${file.id}")
+                                                        withContext(Dispatchers.Main) { reloadFiles(project.id) }
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -437,15 +499,38 @@ fun IDEWorkspaceScreen(
                             }
                         }
 
+                        val language = remember(activeFile.id) {
+                            SyntaxHighlighter.detectLanguage(activeFile.name)
+                        }
+                        val lineCount = remember(codeContent.text) {
+                            codeContent.text.count { it == '\n' } + 1
+                        }
                         Row(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
                                 .background(PrimaryObsidian)
+                                .verticalScroll(rememberScrollState())
                         ) {
+                            // Gutter with line numbers
+                            Column(
+                                modifier = Modifier
+                                    .background(SecondaryCard)
+                                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                            ) {
+                                for (n in 1..lineCount) {
+                                    Text(
+                                        text = "$n",
+                                        color = TextMuted,
+                                        fontSize = 14.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        lineHeight = 20.sp
+                                    )
+                                }
+                            }
                             BasicTextField(
                                 value = codeContent,
-                                onValueChange = { codeContent = it },
+                                onValueChange = { codeContent = EditorInput.process(codeContent, it) },
                                 textStyle = TextStyle(
                                     color = TextLight,
                                     fontSize = 14.sp,
@@ -454,7 +539,7 @@ fun IDEWorkspaceScreen(
                                 ),
                                 cursorBrush = SolidColor(ElectricCyan),
                                 visualTransformation = VisualTransformation { text ->
-                                    val annotated = highlightKotlinSyntax(text.text)
+                                    val annotated = SyntaxHighlighter.highlight(text.text, language)
                                     TransformedText(annotated, OffsetMapping.Identity)
                                 },
                                 modifier = Modifier
@@ -729,71 +814,57 @@ fun IDEWorkspaceScreen(
             containerColor = com.wren.ide.core.theme.SecondaryCard
         )
     }
-}
 
-fun highlightKotlinSyntax(text: String): AnnotatedString {
-    return buildAnnotatedString {
-        val keywords = setOf(
-            "package", "import", "class", "interface", "fun", "val", "var",
-            "if", "else", "for", "while", "return", "try", "catch", "throw",
-            "null", "true", "false", "object", "private", "public", "protected"
+    renameTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            title = { Text("Renombrar", color = TextLight) },
+            text = {
+                OutlinedTextField(
+                    value = renameValue,
+                    onValueChange = { renameValue = it },
+                    label = { Text("Nuevo nombre", color = TextMuted) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextLight,
+                        unfocusedTextColor = TextLight,
+                        focusedBorderColor = ElectricCyan,
+                        unfocusedBorderColor = BorderGray
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val project = selectedProject
+                        val newName = renameValue.trim()
+                        if (project == null || newName.isBlank()) {
+                            renameTarget = null
+                            return@TextButton
+                        }
+                        val parentPath = target.path.substringBeforeLast('/', "")
+                        val newPath = if (parentPath.isEmpty()) newName else "$parentPath/$newName"
+                        renameTarget = null
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val body = mapOf("name" to newName, "path" to newPath)
+                                NetworkClient.patch("/projects/${project.id}/files/${target.id}", body)
+                                withContext(Dispatchers.Main) { reloadFiles(project.id) }
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
+                ) {
+                    Text("Guardar", color = ElectricCyan)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTarget = null }) {
+                    Text("Cancelar", color = TextMuted)
+                }
+            },
+            containerColor = com.wren.ide.core.theme.SecondaryCard
         )
-
-        var currentIndex = 0
-        val tokenRegex = Regex("""(//.*)|(".*?")|(\d+)|([a-zA-Z_][a-zA-Z0-9_]*)|([^\s])""")
-
-        tokenRegex.findAll(text).forEach { result ->
-            val match = result.value
-            val start = result.range.first
-
-            if (start > currentIndex) {
-                append(text.substring(currentIndex, start))
-            }
-
-            when {
-                match.startsWith("//") -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = TextMuted,
-                            fontStyle = FontStyle.Italic
-                        )
-                    ) {
-                        append(match)
-                    }
-                }
-
-                match.startsWith("\"") && match.endsWith("\"") -> {
-                    withStyle(style = SpanStyle(color = TerminalGreen)) {
-                        append(match)
-                    }
-                }
-
-                match.all { it.isDigit() } -> {
-                    withStyle(style = SpanStyle(color = ElectricCyan)) {
-                        append(match)
-                    }
-                }
-
-                keywords.contains(match) -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = EditorYellow,
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) {
-                        append(match)
-                    }
-                }
-
-                else -> {
-                    append(match)
-                }
-            }
-            currentIndex = result.range.last + 1
-        }
-
-        if (currentIndex < text.length) {
-            append(text.substring(currentIndex))
-        }
     }
 }
+

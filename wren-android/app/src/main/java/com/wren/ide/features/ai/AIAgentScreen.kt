@@ -393,7 +393,9 @@ fun AIAgentScreen(
                                                             val body = mapOf(
                                                                 "action" to action.type,
                                                                 "path" to action.path,
-                                                                "content" to action.content
+                                                                "content" to action.content,
+                                                                "command" to action.command,
+                                                                "projectId" to sessionManager.activeProjectId
                                                             )
                                                             val response = NetworkClient.post("/ai/agent/execute", body)
                                                             
@@ -558,7 +560,8 @@ fun AIAgentScreen(
                                 try {
                                     val body = mapOf(
                                         "prompt" to userPrompt,
-                                        "mode" to selectedMode
+                                        "mode" to selectedMode,
+                                        "projectId" to sessionManager.activeProjectId
                                     )
                                     val response = NetworkClient.post("/ai/chat", body)
                                     if (response.isSuccessful) {

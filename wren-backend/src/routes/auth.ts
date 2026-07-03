@@ -3,22 +3,41 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { getDb } from '../db/database.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config.js';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'wren-super-secret-key-2026-mobile-ide';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateCredentials(email: unknown, password: unknown): string | null {
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    return 'Email and password must be strings.';
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return 'A valid email address is required.';
+  }
+  if (password.length < 8) {
+    return 'Password must be at least 8 characters long.';
+  }
+  return null;
+}
 
 router.post('/register', async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required fields.' });
+  const validationError = validateCredentials(email, password);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
   }
+
+  const normalizedEmail = (email as string).trim().toLowerCase();
 
   try {
     const db = getDb();
-    
+
     // Check if user already exists
-    const existingUser = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+    const existingUser = await db.get('SELECT * FROM users WHERE email = ?', [normalizedEmail]);
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email address already exists.' });
     }
@@ -34,7 +53,7 @@ router.post('/register', async (req, res) => {
       // Insert User
       await db.run(
         'INSERT INTO users (id, email, password_hash, role, tier, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [userId, email, passwordHash, 'USER', 'FREE', timestamp]
+        [userId, normalizedEmail, passwordHash, 'USER', 'FREE', timestamp]
       );
 
       // Insert Initial Credits (50 Points)
@@ -57,15 +76,15 @@ router.post('/register', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: userId, email, role: 'USER', tier: 'FREE' },
+      { id: userId, email: normalizedEmail, role: 'USER', tier: 'FREE' },
       JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
     );
 
     return res.status(201).json({
       message: 'Account registered successfully.',
       token,
-      user: { id: userId, email, role: 'USER', tier: 'FREE', balance: 50 }
+      user: { id: userId, email: normalizedEmail, role: 'USER', tier: 'FREE', balance: 50 }
     });
   } catch (err) {
     console.error('Registration failure:', err);
@@ -76,20 +95,22 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
     return res.status(400).json({ error: 'Email and password are required fields.' });
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+
   try {
     const db = getDb();
-    
+
     // Fetch user and credit balance in single join query
     const user = await db.get(`
-      SELECT u.*, c.balance 
+      SELECT u.*, c.balance
       FROM users u
       LEFT JOIN credits c ON u.id = c.user_id
       WHERE u.email = ?
-    `, [email]);
+    `, [normalizedEmail]);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password.' });
@@ -103,7 +124,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, tier: user.tier },
       JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
     );
 
     // Track login session
@@ -128,6 +149,39 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login failure:', err);
     return res.status(500).json({ error: 'Server error during user authentication.' });
+  }
+});
+
+// Return the authenticated user's live profile and balance
+router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
+
+  try {
+    const db = getDb();
+    const user = await db.get(`
+      SELECT u.id, u.email, u.role, u.tier, u.created_at, c.balance
+      FROM users u
+      LEFT JOIN credits c ON u.id = c.user_id
+      WHERE u.id = ?
+    `, [req.user.id]);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    return res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tier: user.tier,
+        balance: user.balance || 0,
+        created_at: user.created_at,
+      },
+    });
+  } catch (err) {
+    console.error('Profile fetch failure:', err);
+    return res.status(500).json({ error: 'Server error retrieving profile.' });
   }
 });
 

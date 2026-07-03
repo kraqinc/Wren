@@ -3,6 +3,7 @@ import { open, Database } from 'sqlite';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
+import { OWNER_EMAIL, OWNER_PASSWORD } from '../config.js';
 
 let db: Database<sqlite3.Database, sqlite3.Statement>;
 
@@ -121,10 +122,38 @@ export async function initDb(): Promise<Database<sqlite3.Database, sqlite3.State
     );
   `);
 
+  // Create Chat History Table (persisted AI conversations)
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS chat_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      project_id TEXT,
+      role TEXT CHECK(role IN ('user', 'assistant')) NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'chat',
+      content TEXT NOT NULL,
+      actions TEXT,
+      provider TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
+  `);
+
+  // Performance indexes for the hot query paths
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
+    CREATE INDEX IF NOT EXISTS idx_files_project ON files(project_id);
+    CREATE INDEX IF NOT EXISTS idx_files_parent ON files(parent_id);
+    CREATE INDEX IF NOT EXISTS idx_credit_logs_user ON credit_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_id);
+    CREATE INDEX IF NOT EXISTS idx_chat_user_project ON chat_history(user_id, project_id);
+  `);
+
   // Seed default OWNER user if it does not exist
-  const adminEmail = process.env.OWNER_EMAIL || 'owner@wren.ide';
-  const adminPassword = process.env.OWNER_PASSWORD || 'WrenOwner2026!';
-  
+  const adminEmail = (OWNER_EMAIL || 'owner@wren.ide').trim().toLowerCase();
+  const adminPassword = OWNER_PASSWORD;
+
   const existingOwner = await db.get('SELECT * FROM users WHERE role = ?', 'OWNER');
   if (!existingOwner) {
     const ownerId = 'default-owner-uuid-2026';
