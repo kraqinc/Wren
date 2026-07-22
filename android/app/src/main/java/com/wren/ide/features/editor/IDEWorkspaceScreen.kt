@@ -1,5 +1,9 @@
 package com.wren.ide.features.editor
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -693,6 +697,13 @@ private fun TerminalSheet(
     onReset: () -> Unit,
     onExecute: () -> Unit
 ) {
+    val terminalPulseTransition = rememberInfiniteTransition(label = "terminal_pulse")
+    val terminalPulse by terminalPulseTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1400)),
+        label = "terminal_pulse_alpha"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -705,7 +716,7 @@ private fun TerminalSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Terminal, contentDescription = null, tint = TextMuted, modifier = Modifier.size(15.dp))
+                Icon(Icons.Filled.Terminal, contentDescription = null, tint = TerminalGreen.copy(alpha = 0.45f + (0.55f * terminalPulse)), modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("TERMINAL", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
             }
