@@ -8,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.weight
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +27,7 @@ import com.wren.ide.features.editor.IDEWorkspaceScreen
 import com.wren.ide.features.owner.OwnerAdminScreen
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             WrenTheme {
+
                 var currentScreen by remember {
                     mutableStateOf(
                         when {
@@ -47,45 +48,68 @@ class MainActivity : ComponentActivity() {
                 }
 
                 fun openWorkspaceOrPermission() {
-                    currentScreen = if (WrenFileStorage.hasAllFilesAccess()) {
-                        "workspace"
-                    } else {
-                        "storage_permission"
-                    }
+                    currentScreen =
+                        if (WrenFileStorage.hasAllFilesAccess())
+                            "workspace"
+                        else
+                            "storage_permission"
                 }
 
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+
                     ConnectionStatusBanner()
 
                     Crossfade(
                         targetState = currentScreen,
-                        animationSpec = tween(durationMillis = 260),
-                        label = "wren_screen",
+                        animationSpec = tween(260),
+                        label = "screen",
                         modifier = Modifier.weight(1f)
                     ) { screen ->
+
                         when (screen) {
+
                             "auth" -> {
                                 AuthScreen(
                                     sessionManager = sessionManager,
-                                    onAuthSuccess = { openWorkspaceOrPermission() }
+                                    onAuthSuccess = {
+                                        openWorkspaceOrPermission()
+                                    }
                                 )
                             }
 
                             "storage_permission" -> {
                                 StoragePermissionGate(
-                                    onGranted = { currentScreen = "workspace" }
+                                    onGranted = {
+                                        currentScreen = "workspace"
+                                    }
                                 )
                             }
 
                             "workspace" -> {
-                                Column(modifier = Modifier.fillMaxSize()) {
+
+                                Column(
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+
                                     StoragePermissionBanner()
-                                    Box(modifier = Modifier.weight(1f)) {
+
+                                    Box(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+
                                         IDEWorkspaceScreen(
                                             sessionManager = sessionManager,
-                                            onNavToAI = { currentScreen = "ai_agent" },
-                                            onNavToCredits = { currentScreen = "credits" },
-                                            onNavToOwner = { currentScreen = "owner_dashboard" },
+                                            onNavToAI = {
+                                                currentScreen = "ai_agent"
+                                            },
+                                            onNavToCredits = {
+                                                currentScreen = "credits"
+                                            },
+                                            onNavToOwner = {
+                                                currentScreen = "owner_dashboard"
+                                            },
                                             onLogout = {
                                                 sessionManager.clearSession()
                                                 NetworkClient.setAuthToken(null)
@@ -99,21 +123,27 @@ class MainActivity : ComponentActivity() {
                             "ai_agent" -> {
                                 AIAgentScreen(
                                     sessionManager = sessionManager,
-                                    onNavBack = { currentScreen = "workspace" }
+                                    onNavBack = {
+                                        currentScreen = "workspace"
+                                    }
                                 )
                             }
 
                             "credits" -> {
                                 CreditsScreen(
                                     sessionManager = sessionManager,
-                                    onNavBack = { currentScreen = "workspace" }
+                                    onNavBack = {
+                                        currentScreen = "workspace"
+                                    }
                                 )
                             }
 
                             "owner_dashboard" -> {
                                 OwnerAdminScreen(
                                     sessionManager = sessionManager,
-                                    onNavBack = { currentScreen = "workspace" }
+                                    onNavBack = {
+                                        currentScreen = "workspace"
+                                    }
                                 )
                             }
                         }
