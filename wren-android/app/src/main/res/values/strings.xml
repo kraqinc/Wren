@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cursor Mobile</string>
+    <string name="title_wren_ide">CURSOR</string>
+    <string name="sub_title_studio">Cursor Mobile Agent</string>
+    <string name="label_email">Email Address</string>
+    <string name="label_password">Password</string>
+    <string name="btn_login">Login</string>
+    <string name="btn_register">Register Free</string>
+    <string name="toggle_login">Already have an account? Login</string>
+    <string name="toggle_register">Don\'t have an account? Sign up</string>
+    <string name="error_fill_fields">Please fill in all fields.</string>
+    <string name="error_network">Network error: Could not contact server.</string>
+    
+    <!-- Workspace -->
+    <string name="header_projects">PROJECTS</string>
+    <string name="header_files">FILES</string>
+    <string name="hint_editor_empty">Create or select a file to begin coding.</string>
+    <string name="label_terminal">TERMINAL</string>
+    
+    <!-- AI Agent -->
+    <string name="ai_agent_title">AI Agent Assistant</string>
+    <string name="ai_initial_msg">Hello! In which mode would you like to work today? You can select Standard Chat, Autonomous Planner, Editor, or Terminal in the top bar.</string>
+    <string name="cost_points_suffix">Points</string>
+    <string name="label_proposed_actions">PROPOSED ACTIONS - MANDATORY REVIEW</string>
+    <string name="desc_safety_warning">Wren AI has proposed the following structural changes. Review them before confirming:</string>
+    <string name="btn_confirm_execute">Confirm and Execute Action (-1 Point)</string>
+    <string name="btn_cancel_reject">Reject and Cancel</string>
+    
+    <!-- Credits -->
+    <string name="title_wallet">My Wren Wallet</string>
+    <string name="label_balance">POINTS BALANCE</string>
+    <string name="label_account_tier">Account Tier: Plan %1$s</string>
+    <string name="header_packages">RECHARGE POINTS &amp; SUBSCRIPTIONS</string>
+    <string name="header_history">TRANSACTION HISTORY</string>
+    <string name="package_basic">Basic Top-up (+100 Points)</string>
+    <string name="package_premium">Premium Top-up (+500 Points)</string>
+    <string name="package_subscription">Monthly Subscriber Plan (+1000 Pts/Mo)</string>
+    
+    <!-- Owner Console -->
+    <string name="title_owner_console">Owner Console</string>
+    <string name="header_server_stats">SERVER METRICS</string>
+    <string name="label_users">Users</string>
+    <string name="label_total_points">Total Points</string>
+    <string name="label_active_projects">Active Projects</string>
+    <string name="label_consumed_points">Consumed Points</string>
+    <string name="header_audit_logs">SECURITY AUDIT LOGS (RBAC)</string>
+    
+    <!-- Payments -->
+    <string name="header_payment_methods">PAYMENT METHODS</string>
+    <string name="label_paypal">PayPal</string>
+    <string name="label_paypal_active">✓ Active</string>
+    <string name="label_paypal_secure">Secure payment via paypal.me/KraqPro</string>
+    <string name="btn_pay_paypal">Pay with PayPal</string>
+    <string name="dialog_confirm_purchase">Confirm Purchase</string>
+    <string name="label_points">Points:</string>
+    <string name="label_price">Price:</string>
+    <string name="msg_paypal_redirect">PayPal will open to complete the payment securely.</string>
+    <string name="msg_payment_success">✓ Payment of %1$s processed via PayPal — +%2$d Pts credited</string>
+    <string name="msg_payment_error_server">Server error processing payment.</string>
+    <string name="msg_payment_error_network">Network error processing transaction.</string>
+    <string name="package_pro">Pro Pack (+1500 Points)</string>
+    <string name="package_ultra">Ultra Pack (+5000 Points)</string>
+</resources>

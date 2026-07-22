@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "src/app/api/ai/chat/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

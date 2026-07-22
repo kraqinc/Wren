@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wren Login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="mark">〈〉</div>
+      <h1>WREN</h1>
+      <p data-i18n="subtitle">AI that builds the future</p>
+      <h2 data-i18n="headline">Create. Build. Launch.</h2>
+      <p class="copy" data-i18n="copy">
+        Inicia sesión para entrar al workspace, crear proyectos y abrir tu terminal real.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" id="loginTab" type="button" data-i18n="login">Iniciar sesión</button>
+        <button class="tab" id="registerTab" type="button" data-i18n="register">Crear cuenta</button>
+      </div>
+
+      <form id="authForm" class="form">
+        <label>
+          <span data-i18n="emailLabel">Correo</span>
+          <input id="email" type="email" autocomplete="email" placeholder="tu@empresa.com" />
+        </label>
+
+        <label>
+          <span data-i18n="passwordLabel">Contraseña</span>
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </label>
+
+        <button id="submitBtn" class="primary" type="submit" data-i18n="login">Iniciar sesión</button>
+
+        <p id="error" class="error" hidden></p>
+
+        <div class="divider"><span>SSO</span></div>
+
+        <div class="sso">
+          <button type="button" class="secondary" data-provider="Google">Google</button>
+          <button type="button" class="secondary" data-provider="GitHub">GitHub</button>
+        </div>
+
+        <p class="terms" data-i18n="terms">
+          Al continuar aceptas los Términos del Consumidor, la Política de Uso y la Política de Privacidad.
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
