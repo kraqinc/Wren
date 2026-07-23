@@ -10,13 +10,16 @@ jobs:
   backend:
     name: Backend (Next.js + Prisma)
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
+
     env:
       DATABASE_URL: mysql://root:password@127.0.0.1:3306/wren
       JWT_SECRET: wren-ci-secret
       GEMINI_API_KEY: dummy-key
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,26 +28,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install
 
-      - name: Generate Prisma client
+      - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Build backend
+      - name: Build Backend
         run: npm run build
 
   android:
     name: Android (Compose)
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: android
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup JDK
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -53,8 +59,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Android app
-        working-directory: android
+      - name: Build APK
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wren-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
