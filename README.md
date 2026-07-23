@@ -2,191 +2,137 @@
 
 # Wren
 
-### Build software from anywhere.
-
-Native Android IDE powered by AI.
+**A pocket-sized AI IDE for real development work.**
 
 <p>
-
-[![Release](https://img.shields.io/github/v/release/kraqinc/Wren?style=for-the-badge)](https://github.com/kraqinc/Wren/releases)
-[![License](https://img.shields.io/github/license/kraqinc/Wren?style=for-the-badge)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/kraqinc/Wren?style=for-the-badge)](https://github.com/kraqinc/Wren)
-[![Issues](https://img.shields.io/github/issues/kraqinc/Wren?style=for-the-badge)](https://github.com/kraqinc/Wren/issues)
-
+  <a href="https://github.com/kraqinc/Wren/releases">
+    <img src="https://img.shields.io/github/v/release/kraqinc/Wren?include_prereleases&style=for-the-badge" alt="Latest release" />
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/github/license/kraqinc/Wren?style=for-the-badge" alt="License" />
+  </a>
+  <a href="./.github/workflows/build.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/kraqinc/Wren/build.yml?branch=main&style=for-the-badge" alt="Build" />
+  </a>
 </p>
 
 <p>
-
-<img src="https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
-<img src="https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
-<img src="https://img.shields.io/badge/Material%203-6750A4?style=for-the-badge&logo=materialdesign&logoColor=white">
-<img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white">
-<img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma">
-
+  <img src="https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
+  <img src="https://img.shields.io/badge/Material%203-6750A4?style=for-the-badge&logo=materialdesign&logoColor=white" alt="Material 3" />
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma" alt="Prisma" />
 </p>
 
 </div>
 
 ---
 
-# Overview
+## Overview
 
-Wren is a native Android IDE built for developers who want to edit, manage and build software directly from their phone.
+Wren is a native Android IDE with an integrated AI agent, project workspace, file explorer, authentication flow, and a companion web login.
 
-Unlike traditional AI chat applications, Wren combines a real project workspace, an AI engineer, authentication, cloud synchronization and a modern Material 3 interface inside a single application.
-
-The project is organized as independent applications, allowing Android, Backend and Web to evolve separately while sharing the same authentication and project ecosystem.
+The repository is organized so Android, backend, and web can evolve independently while still sharing the same account and project ecosystem.
 
 ---
 
-# Features
-
-- Native Android IDE
-- AI-assisted development
-- Project workspace
-- File explorer
-- Premium Material 3 UI
-- Authentication
-- Cloud-ready backend
-- Integrated web login
-- GitHub Actions CI/CD
-- Vercel deployment
-- Prisma ORM
-- MySQL support
-
----
-
-# Repository Layout
-
-```text
-Wren/
-│
-├── android/
-│   Native Android application
-│
-├── backend/
-│   API
-│   Authentication
-│   Database
-│
-├── web/
-│   Login
-│   Landing
-│
-├── .github/
-│   └── workflows/
-│
-├── LICENSE
-│
-└── README.md
-```
-
----
-
-# Architecture
-
-```text
-Android App
-      │
-      ▼
- Authentication
-      │
-      ▼
- Backend API
-      │
- ┌────┴────┐
- ▼         ▼
-AI      Database
-```
-
----
-
-# Tech Stack
-
-| Layer | Technology |
-|--------|------------|
-| Android | Kotlin |
-| UI | Jetpack Compose |
-| Design | Material 3 |
-| Backend | Next.js |
-| Language | TypeScript |
-| ORM | Prisma |
-| Database | MySQL |
-| Deployment | Vercel |
-| CI/CD | GitHub Actions |
-
----
-
-# Releases
+## Download
 
 The recommended way to install Wren is through **GitHub Releases**.
 
-Every stable version includes:
-
-- Android APK
-- Release notes
-- Changelog
+- Download the latest release from the Releases page
+- Install the Android build from the release assets
+- Use the web login when you need browser-based access
 
 ---
 
-# Contributing
+## Repository Layout
 
-Contributions are welcome.
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Commit your changes.
-4. Open a Pull Request.
-
-Please read **CONTRIBUTING.md** before contributing.
-
----
-
-# Security
-
-If you discover a security vulnerability, please report it privately before opening a public issue.
-
-See **SECURITY.md**.
+```text
+Wren/
+├── android/            Native Android application
+├── backend/            Next.js API + Prisma + MySQL
+├── wren-login-web/     Static login page deployed on Vercel
+├── .github/workflows/   CI pipelines
+├── LICENSE             MIT license
+└── README.md           Project overview
+```
 
 ---
 
-# Roadmap
+## Features
 
-- ✅ Native IDE
-- ✅ AI Chat
-- ✅ Authentication
-- ✅ Backend
-- ✅ Web Login
-- 🔄 Premium UI
-- 🔄 Real Terminal
-- 🔄 Project Permissions
-- ⏳ Marketplace
-- ⏳ Cloud Sync
+- Native Android app built with Kotlin, Jetpack Compose, and Material 3
+- Real project workspace and file explorer
+- AI-assisted development screens
+- Authentication and session handling
+- Backend API powered by Next.js and Prisma
+- Web login connected to the backend API
+- GitHub Actions CI for Android and backend builds
 
 ---
 
-# Contributors
+## Backend
 
-Thanks to everyone who contributes to Wren.
+The backend lives in `backend/` and uses:
 
-<a href="https://github.com/kraqinc/Wren/graphs/contributors">
-<img src="https://contrib.rocks/image?repo=kraqinc/Wren"/>
-</a>
+- Next.js 14
+- TypeScript
+- Prisma 5
+- MySQL
+- `jose` for JWTs
 
----
-
-# License
-
-Licensed under the MIT License.
-
-See the **LICENSE** file.
+Environment variables are documented in `backend/.env.example`.
 
 ---
 
-<div align="center">
+## Web Login
 
-Made with ❤️ by KraqInc
+The web login lives in `wren-login-web/` and is a static HTML/CSS/JS app.
 
-**Build software from anywhere.**
+It talks to the backend via `window.WREN_API_BASE`. Copy `wren-login-web/config.example.js` to `config.js` and set your backend URL before deploying.
+
+---
+
+## Android
+
+Open `android/` in Android Studio to build the app.
+
+The Android project includes:
+
+- Compose UI
+- Session management
+- Storage permission flow
+- Workspace, credits, AI, and owner screens
+
+---
+
+## CI / GitHub Actions
+
+`.github/workflows/build.yml` runs:
+
+- Android build (`./gradlew assembleDebug`)
+- Backend build (`npm run build`)
+
+---
+
+## Getting Started
+
+```bash
+git clone https://github.com/kraqinc/Wren.git
+cd Wren
+```
+
+Then open the platform you need:
+
+- `android/` for the Android app
+- `backend/` for the API
+- `wren-login-web/` for the web login
+
+---
+
+## License
+
+Released under the MIT License. See `LICENSE` for details.
 
 </div>

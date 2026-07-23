@@ -1,47 +1,27 @@
-name: Wren CI
+name: Wren Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
   pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
 
 jobs:
-  android:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build Android
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: wren-apk
-          path: android/app/build/outputs/**/*.apk
-
   backend:
+    name: Backend (Next.js + Prisma)
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: mysql://root:password@127.0.0.1:3306/wren
+      JWT_SECRET: wren-ci-secret
+      GEMINI_API_KEY: dummy-key
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -49,13 +29,32 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        working-directory: backend
-        run: npm ci
+        run: npm ci || npm install
 
-      - name: Generate Prisma
-        working-directory: backend
+      - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Build Backend
-        working-directory: backend
+      - name: Build backend
         run: npm run build
+
+  android:
+    name: Android (Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Android app
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug

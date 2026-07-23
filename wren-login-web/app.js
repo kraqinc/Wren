@@ -1,4 +1,4 @@
-const API_BASE = window.WREN_API_BASE || "https://wren-backend-vercel.vercel.app/api";
+const API_BASE = window.WREN_API_BASE || "https://YOUR-BACKEND.vercel.app/api";
 const state = { mode: "login" };
 
 const i18n = {
