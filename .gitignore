@@ -50,4 +50,3 @@ android/app/build/
 *.keystore
 local.properties
 wren-login-web
-backend

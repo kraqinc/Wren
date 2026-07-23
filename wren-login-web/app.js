@@ -1,54 +1,46 @@
 const API_BASE = window.WREN_API_BASE || "https://YOUR-BACKEND.vercel.app/api";
-const state = { mode: "login" };
+const state = { email: "" };
 
 const i18n = {
   es: {
-    subtitle: "AI that builds the future",
-    headline: "Create. Build. Launch.",
-    copy: "Inicia sesión para entrar al workspace, crear proyectos y abrir tu terminal real.",
-    login: "Iniciar sesión",
-    register: "Crear cuenta",
+    headline: "Crea. Construye. <em>Lanza.</em>",
     emailLabel: "Correo",
-    passwordLabel: "Contraseña",
-    terms: "Al continuar aceptas los Términos del Consumidor, la Política de Uso y la Política de Privacidad.",
-    errorLogin: "No se pudo autenticar. Inténtalo de nuevo.",
-    errorRegister: "No se pudo crear la cuenta. Inténtalo de nuevo.",
-    loadingLogin: "Iniciando sesión...",
-    loadingRegister: "Creando cuenta...",
-    successLogin: "Sesión iniciada",
-    successRegister: "Cuenta creada"
+    continue: "Continuar",
+    or: "o",
+    continueGoogle: "Continuar con Google",
+    continueGithub: "Continuar con GitHub",
+    codeLabel: "Código de 6 dígitos",
+    verify: "Verificar",
+    changeEmail: "Cambiar correo",
+    terms: "Al continuar aceptas los Términos del Consumidor, la Política de Uso y la Política de Privacidad de Wren.",
+    errorEmail: "Ingresa un correo válido.",
+    errorRequestCode: "No se pudo enviar el código. Inténtalo de nuevo.",
+    errorVerify: "Código inválido o expirado.",
+    loadingRequest: "Enviando código...",
+    loadingVerify: "Verificando...",
+    codeStepCopyExisting: (email) => `Enviamos un código a ${email}. Ya tienes cuenta — este código inicia tu sesión.`,
+    codeStepCopyNew: (email) => `Enviamos un código a ${email}. Es tu primera vez — este código crea tu cuenta.`,
+    oauthNotConnected: (provider) => `${provider} aún no está conectado.`
   },
   en: {
-    subtitle: "AI that builds the future",
-    headline: "Create. Build. Launch.",
-    copy: "Sign in to enter the workspace, create projects, and open your real terminal.",
-    login: "Sign in",
-    register: "Create account",
+    headline: "Create. Build. <em>Launch.</em>",
     emailLabel: "Email",
-    passwordLabel: "Password",
-    terms: "By continuing, you accept the Consumer Terms, Usage Policy, and Privacy Policy.",
-    errorLogin: "Authentication failed. Please try again.",
-    errorRegister: "Could not create the account. Please try again.",
-    loadingLogin: "Signing in...",
-    loadingRegister: "Creating account...",
-    successLogin: "Signed in",
-    successRegister: "Account created"
-  },
-  pt: {
-    subtitle: "AI that builds the future",
-    headline: "Create. Build. Launch.",
-    copy: "Entre para acessar o workspace, criar projetos e abrir o terminal real.",
-    login: "Entrar",
-    register: "Criar conta",
-    emailLabel: "Email",
-    passwordLabel: "Senha",
-    terms: "Ao continuar, você aceita os Termos do Consumidor, a Política de Uso e a Política de Privacidade.",
-    errorLogin: "Falha na autenticação. Tente novamente.",
-    errorRegister: "Não foi possível criar a conta. Tente novamente.",
-    loadingLogin: "Entrando...",
-    loadingRegister: "Criando conta...",
-    successLogin: "Entrou",
-    successRegister: "Conta criada"
+    continue: "Continue",
+    or: "or",
+    continueGoogle: "Continue with Google",
+    continueGithub: "Continue with GitHub",
+    codeLabel: "6-digit code",
+    verify: "Verify",
+    changeEmail: "Change email",
+    terms: "By continuing, you accept the Consumer Terms, Usage Policy, and Privacy Policy of Wren.",
+    errorEmail: "Enter a valid email.",
+    errorRequestCode: "Could not send the code. Please try again.",
+    errorVerify: "Invalid or expired code.",
+    loadingRequest: "Sending code...",
+    loadingVerify: "Verifying...",
+    codeStepCopyExisting: (email) => `We sent a code to ${email}. You already have an account — this code signs you in.`,
+    codeStepCopyNew: (email) => `We sent a code to ${email}. First time here — this code creates your account.`,
+    oauthNotConnected: (provider) => `${provider} is not connected yet.`
   }
 };
 
@@ -61,25 +53,27 @@ function langKey() {
 }
 
 function t(key) {
-  return i18n[langKey()][key] || i18n.en[key] || key;
+  const dict = i18n[langKey()];
+  return (dict && dict[key] !== undefined) ? dict[key] : (i18n.en[key] !== undefined ? i18n.en[key] : key);
 }
 
 function paint() {
-  document.documentElement.lang = langKey() === "pt" ? "pt-BR" : langKey() === "es" ? "es" : "en";
+  document.documentElement.lang = langKey();
   document.querySelectorAll("[data-i18n]").forEach((node) => {
-    const key = node.getAttribute("data-i18n");
-    node.textContent = t(key);
+    const value = t(node.getAttribute("data-i18n"));
+    if (typeof value === "string") node.innerHTML = value;
   });
-  el("submitBtn").textContent = t(state.mode);
-  el("submitBtn").setAttribute("data-i18n", state.mode);
-  el("loginTab").classList.toggle("active", state.mode === "login");
-  el("registerTab").classList.toggle("active", state.mode === "register");
 }
 
-function showError(message) {
-  const error = el("error");
-  error.textContent = message;
-  error.hidden = false;
+function showError(target, message) {
+  const node = el(target);
+  node.textContent = message;
+  node.hidden = false;
+}
+function clearError(target) {
+  const node = el(target);
+  node.hidden = true;
+  node.textContent = "";
 }
 
 function bridgeError(message) {
@@ -90,19 +84,6 @@ function bridgeError(message) {
   return false;
 }
 
-function clearError() {
-  const error = el("error");
-  error.hidden = true;
-  error.textContent = "";
-}
-
-function switchMode(mode) {
-  state.mode = mode;
-  paint();
-  clearError();
-  el("submitBtn").textContent = t(state.mode);
-}
-
 function bridgeSuccess(data) {
   localStorage.setItem("wren_token", data.token || "");
   if (data.user) localStorage.setItem("wren_user", JSON.stringify(data.user));
@@ -111,70 +92,137 @@ function bridgeSuccess(data) {
     return;
   }
   document.body.innerHTML = `
-    <div style="min-height:100vh;display:grid;place-items:center;background:#050607;color:#f3f5f7;font-family:Inter,system-ui,sans-serif;padding:24px">
-      <div style="max-width:520px;width:100%;background:rgba(16,18,21,.95);border:1px solid rgba(255,255,255,.09);border-radius:28px;padding:28px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.48)">
-        <div style="width:72px;height:72px;border-radius:22px;background:rgba(255,255,255,.04);margin:0 auto 18px;display:grid;place-items:center;color:#26e6ff;font-size:30px">〈〉</div>
-        <h1 style="margin:0 0 10px;font-size:32px;letter-spacing:.18em">WREN</h1>
-        <p style="margin:0 0 18px;color:#9ca3af">${data.message || "OK"}</p>
-        <p style="margin:0;color:#9ca3af">Token guardado correctamente.</p>
+    <div style="min-height:100vh;display:grid;place-items:center;background:#000;color:#F2F2F0;font-family:Inter,system-ui,sans-serif;padding:24px">
+      <div style="max-width:380px;width:100%;text-align:center">
+        <div style="color:#4C8DFF;font-size:28px;margin-bottom:14px">◆</div>
+        <h1 style="margin:0 0 10px;font-size:22px;font-family:Newsreader,serif;font-weight:500">Wren</h1>
+        <p style="margin:0;color:#8E8E8E;font-size:14px">${data.message || "OK"}</p>
       </div>
     </div>`;
 }
 
-async function submit() {
-  const email = el("email").value.trim();
-  const password = el("password").value;
-  const submitBtn = el("submitBtn");
+function showCodeStep(accountExists) {
+  el("emailStep").hidden = true;
+  el("codeStep").hidden = false;
+  el("codeStepCopy").textContent = accountExists
+    ? t("codeStepCopyExisting")(state.email)
+    : t("codeStepCopyNew")(state.email);
+  el("code").value = "";
+  el("code").focus();
+}
 
-  if (!email || !password) {
-    showError(langKey() === "es" ? "Completa tu correo y tu contraseña." : "Fill in email and password.");
+function showEmailStep() {
+  el("codeStep").hidden = true;
+  el("emailStep").hidden = false;
+  clearError("codeError");
+}
+
+async function requestCode(e) {
+  e.preventDefault();
+  const email = el("email").value.trim();
+  if (!email) {
+    showError("error", t("errorEmail"));
     return;
   }
 
-  clearError();
-  submitBtn.disabled = true;
-  submitBtn.textContent = state.mode === "login" ? t("loadingLogin") : t("loadingRegister");
+  clearError("error");
+  state.email = email;
+  const btn = el("requestCodeBtn");
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = t("loadingRequest");
 
   try {
-    const res = await fetch(`${API_BASE}/auth`, {
+    const res = await fetch(`${API_BASE}/auth/request-code`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mode: state.mode,
-        email,
-        password
-      })
+      body: JSON.stringify({ email })
     });
-
     const data = await res.json();
 
     if (!res.ok) {
-      const message = data.error || (state.mode === "login" ? t("errorLogin") : t("errorRegister"));
-      if (!bridgeError(message)) showError(message);
+      const message = data.error || t("errorRequestCode");
+      if (!bridgeError(message)) showError("error", message);
+      return;
+    }
+
+    showCodeStep(data.accountExists);
+  } catch (err) {
+    const message = err.message || t("errorRequestCode");
+    if (!bridgeError(message)) showError("error", message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function verifyCode(e) {
+  e.preventDefault();
+  const code = el("code").value.trim();
+  if (!/^\d{6}$/.test(code)) {
+    showError("codeError", t("errorVerify"));
+    return;
+  }
+
+  clearError("codeError");
+  const btn = el("verifyCodeBtn");
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = t("loadingVerify");
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: state.email, code })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      const message = data.error || t("errorVerify");
+      if (!bridgeError(message)) showError("codeError", message);
       return;
     }
 
     bridgeSuccess(data);
   } catch (err) {
-    const message = err.message || (state.mode === "login" ? t("errorLogin") : t("errorRegister"));
-    if (!bridgeError(message)) showError(message);
+    const message = err.message || t("errorVerify");
+    if (!bridgeError(message)) showError("codeError", message);
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = t(state.mode);
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
+}
+
+function handleOAuth(provider) {
+  // Google -> wren-google.onrender.com, GitHub -> wren-git.onrender.com
+  // (ver skill android-webview-login). Si esos backends de OAuth todavia
+  // no estan desplegados, muestra el aviso en vez de romper.
+  const redirectBase = provider === "Google"
+    ? (window.WREN_GOOGLE_OAUTH_URL || null)
+    : (window.WREN_GITHUB_OAUTH_URL || null);
+
+  if (!redirectBase) {
+    showError("error", t("oauthNotConnected")(provider));
+    return;
+  }
+
+  window.location.href = `${redirectBase}?redirect_uri=${encodeURIComponent(window.location.origin)}`;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   paint();
-  el("loginTab").addEventListener("click", () => switchMode("login"));
-  el("registerTab").addEventListener("click", () => switchMode("register"));
-  el("authForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    submit();
-  });
+  el("emailStep").addEventListener("submit", requestCode);
+  el("codeStep").addEventListener("submit", verifyCode);
+  el("backToEmailBtn").addEventListener("click", showEmailStep);
   document.querySelectorAll("[data-provider]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      showError(`${btn.getAttribute("data-provider")} ${langKey() === "es" ? "aún no está conectado." : "is not connected yet."}`);
-    });
+    btn.addEventListener("click", () => handleOAuth(btn.getAttribute("data-provider")));
   });
+
+  // Si volvemos de un redirect de OAuth con ?token=... en la URL
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (token) {
+    bridgeSuccess({ token, message: "Sesión iniciada" });
+  }
 });
